@@ -18,8 +18,23 @@
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Log Workout</h3>
                 <form hx-post="/api/workouts"
+                      hx-ext="json-enc"
                       hx-target="#workout-message"
-                      hx-swap="innerHTML">
+                      hx-swap="innerHTML"
+                      @htmx:after-request="
+                        if ($event.detail.successful) {
+                          $event.target.reset();
+                          document.getElementById('workout-date').value = new Date().toISOString();
+                          $refs.workoutMsg.className = 'mt-2 text-sm text-green-600';
+                          $refs.workoutMsg.textContent = 'Workout logged successfully!';
+                          setTimeout(() => { $refs.workoutMsg.textContent = ''; }, 3000);
+                          htmx.trigger('#workout-history', 'refresh-history');
+                        } else {
+                          $refs.workoutMsg.className = 'mt-2 text-sm text-red-600';
+                          $refs.workoutMsg.textContent = 'Error logging workout. Please try again.';
+                        }
+                      "
+                      x-data>
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
@@ -42,7 +57,7 @@
                             class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                         Log Workout
                     </button>
-                    <div id="workout-message" class="mt-2 text-sm"></div>
+                    <div id="workout-message" class="mt-2 text-sm" x-ref="workoutMsg"></div>
                 </form>
             </div>
         </div>
@@ -51,8 +66,11 @@
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
             <div class="px-4 py-5 sm:p-6">
                 <h2 class="text-xl font-semibold text-gray-900 mb-4">Workout History</h2>
-                <div id="workout-history">
-                    <p class="text-sm text-gray-500">No workouts logged yet. Start tracking your workouts!</p>
+                <div id="workout-history"
+                     hx-get="/api/workouts"
+                     hx-trigger="load, refresh-history from:body"
+                     hx-swap="innerHTML">
+                    <p class="text-sm text-gray-500">Loading...</p>
                 </div>
             </div>
         </div>

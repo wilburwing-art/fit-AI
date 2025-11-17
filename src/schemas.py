@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi_users import schemas
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 # User schemas (FastAPI-Users)
@@ -75,6 +75,18 @@ class WeightLogCreate(BaseModel):
     body_fat_pct: Optional[float] = None
     measurements: dict = {}
 
+    @field_validator("date", mode="before")
+    @classmethod
+    def strip_timezone(cls, v):
+        """Strip timezone info to match database expectations"""
+        if isinstance(v, str):
+            # Parse ISO string and strip timezone
+            dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return dt.replace(tzinfo=None)
+        if isinstance(v, datetime) and v.tzinfo is not None:
+            return v.replace(tzinfo=None)
+        return v
+
 
 class WeightLogRead(BaseModel):
     """Schema for reading weight log"""
@@ -99,6 +111,18 @@ class MealLogCreate(BaseModel):
     carbs_g: Optional[float] = None
     fat_g: Optional[float] = None
     calories: Optional[int] = None
+
+    @field_validator("date", mode="before")
+    @classmethod
+    def strip_timezone(cls, v):
+        """Strip timezone info to match database expectations"""
+        if isinstance(v, str):
+            # Parse ISO string and strip timezone
+            dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return dt.replace(tzinfo=None)
+        if isinstance(v, datetime) and v.tzinfo is not None:
+            return v.replace(tzinfo=None)
+        return v
 
 
 class MealLogRead(BaseModel):
@@ -125,6 +149,18 @@ class WorkoutSessionCreate(BaseModel):
     duration_minutes: Optional[int] = None
     overall_rpe: Optional[int] = None
     notes: Optional[str] = None
+
+    @field_validator("scheduled_date", "completed_date", mode="before")
+    @classmethod
+    def strip_timezone(cls, v):
+        """Strip timezone info to match database expectations"""
+        if isinstance(v, str):
+            # Parse ISO string and strip timezone
+            dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            return dt.replace(tzinfo=None)
+        if isinstance(v, datetime) and v.tzinfo is not None:
+            return v.replace(tzinfo=None)
+        return v
 
 
 class WorkoutSessionRead(BaseModel):

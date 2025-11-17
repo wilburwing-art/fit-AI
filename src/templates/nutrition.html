@@ -18,8 +18,23 @@
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Log Meal</h3>
                 <form hx-post="/api/meals"
+                      hx-ext="json-enc"
                       hx-target="#meal-message"
-                      hx-swap="innerHTML">
+                      hx-swap="innerHTML"
+                      @htmx:after-request="
+                        if ($event.detail.successful) {
+                          $event.target.reset();
+                          document.getElementById('meal-date').value = new Date().toISOString();
+                          $refs.mealMsg.className = 'mt-2 text-sm text-green-600';
+                          $refs.mealMsg.textContent = 'Meal logged successfully!';
+                          setTimeout(() => { $refs.mealMsg.textContent = ''; }, 3000);
+                          htmx.trigger('#meal-history', 'refresh-meals');
+                        } else {
+                          $refs.mealMsg.className = 'mt-2 text-sm text-red-600';
+                          $refs.mealMsg.textContent = 'Error logging meal. Please try again.';
+                        }
+                      "
+                      x-data>
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label for="meal-type" class="block text-sm font-medium text-gray-700">Meal Type</label>
@@ -47,7 +62,7 @@
                             class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                         Log Meal
                     </button>
-                    <div id="meal-message" class="mt-2 text-sm"></div>
+                    <div id="meal-message" class="mt-2 text-sm" x-ref="mealMsg"></div>
                 </form>
             </div>
         </div>
@@ -57,8 +72,23 @@
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Log Weight</h3>
                 <form hx-post="/api/weight"
+                      hx-ext="json-enc"
                       hx-target="#weight-message"
-                      hx-swap="innerHTML">
+                      hx-swap="innerHTML"
+                      @htmx:after-request="
+                        if ($event.detail.successful) {
+                          $event.target.reset();
+                          document.getElementById('weight-date').value = new Date().toISOString();
+                          $refs.weightMsg.className = 'mt-2 text-sm text-green-600';
+                          $refs.weightMsg.textContent = 'Weight logged successfully!';
+                          setTimeout(() => { $refs.weightMsg.textContent = ''; }, 3000);
+                          htmx.trigger('#weight-history', 'refresh-weights');
+                        } else {
+                          $refs.weightMsg.className = 'mt-2 text-sm text-red-600';
+                          $refs.weightMsg.textContent = 'Error logging weight. Please try again.';
+                        }
+                      "
+                      x-data>
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <label for="weight" class="block text-sm font-medium text-gray-700">Weight (lbs)</label>
@@ -71,17 +101,33 @@
                             class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                         Log Weight
                     </button>
-                    <div id="weight-message" class="mt-2 text-sm"></div>
+                    <div id="weight-message" class="mt-2 text-sm" x-ref="weightMsg"></div>
                 </form>
             </div>
         </div>
 
         <!-- Meal History -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
             <div class="px-4 py-5 sm:p-6">
                 <h2 class="text-xl font-semibold text-gray-900 mb-4">Meal History</h2>
-                <div id="meal-history">
-                    <p class="text-sm text-gray-500">No meals logged yet. Start tracking your nutrition!</p>
+                <div id="meal-history"
+                     hx-get="/api/meals"
+                     hx-trigger="load, refresh-meals from:body"
+                     hx-swap="innerHTML">
+                    <p class="text-sm text-gray-500">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weight History -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Weight History</h2>
+                <div id="weight-history"
+                     hx-get="/api/weight"
+                     hx-trigger="load, refresh-weights from:body"
+                     hx-swap="innerHTML">
+                    <p class="text-sm text-gray-500">Loading...</p>
                 </div>
             </div>
         </div>

@@ -10,7 +10,7 @@
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script>
         // Add JWT token to all HTMX requests
-        document.body.addEventListener('htmx:configRequest', function(event) {
+        document.addEventListener('htmx:configRequest', function(event) {
             const token = localStorage.getItem('access_token');
             if (token) {
                 event.detail.headers['Authorization'] = 'Bearer ' + token;

@@ -19,8 +19,23 @@
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Log Weight</h3>
                     <form hx-post="/api/weight"
+                          hx-ext="json-enc"
                           hx-target="#weight-message"
-                          hx-swap="innerHTML">
+                          hx-swap="innerHTML"
+                          @htmx:after-request="
+                            if ($event.detail.successful) {
+                              $event.target.reset();
+                              document.getElementById('weight-date').value = new Date().toISOString();
+                              $refs.weightMsg.className = 'mt-2 text-sm text-green-600';
+                              $refs.weightMsg.textContent = 'Weight logged successfully!';
+                              setTimeout(() => { $refs.weightMsg.textContent = ''; }, 3000);
+                              htmx.trigger('#recent-activity', 'refresh-activity');
+                            } else {
+                              $refs.weightMsg.className = 'mt-2 text-sm text-red-600';
+                              $refs.weightMsg.textContent = 'Error logging weight. Please try again.';
+                            }
+                          "
+                          x-data>
                         <div class="mb-4">
                             <label for="weight" class="block text-sm font-medium text-gray-700">Weight (lbs)</label>
                             <input type="number" name="weight_lbs" id="weight" step="0.1" required
@@ -31,7 +46,7 @@
                                 class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                             Log Weight
                         </button>
-                        <div id="weight-message" class="mt-2 text-sm"></div>
+                        <div id="weight-message" class="mt-2 text-sm" x-ref="weightMsg"></div>
                     </form>
                 </div>
             </div>
@@ -41,8 +56,23 @@
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Log Meal</h3>
                     <form hx-post="/api/meals"
+                          hx-ext="json-enc"
                           hx-target="#meal-message"
-                          hx-swap="innerHTML">
+                          hx-swap="innerHTML"
+                          @htmx:after-request="
+                            if ($event.detail.successful) {
+                              $event.target.reset();
+                              document.getElementById('meal-date').value = new Date().toISOString();
+                              $refs.mealMsg.className = 'mt-2 text-sm text-green-600';
+                              $refs.mealMsg.textContent = 'Meal logged successfully!';
+                              setTimeout(() => { $refs.mealMsg.textContent = ''; }, 3000);
+                              htmx.trigger('#recent-activity', 'refresh-activity');
+                            } else {
+                              $refs.mealMsg.className = 'mt-2 text-sm text-red-600';
+                              $refs.mealMsg.textContent = 'Error logging meal. Please try again.';
+                            }
+                          "
+                          x-data>
                         <div class="mb-2">
                             <label for="meal-type" class="block text-sm font-medium text-gray-700">Meal Type</label>
                             <select name="meal_type" id="meal-type"
@@ -63,7 +93,7 @@
                                 class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                             Log Meal
                         </button>
-                        <div id="meal-message" class="mt-2 text-sm"></div>
+                        <div id="meal-message" class="mt-2 text-sm" x-ref="mealMsg"></div>
                     </form>
                 </div>
             </div>
@@ -73,8 +103,23 @@
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Log Workout</h3>
                     <form hx-post="/api/workouts"
+                          hx-ext="json-enc"
                           hx-target="#workout-message"
-                          hx-swap="innerHTML">
+                          hx-swap="innerHTML"
+                          @htmx:after-request="
+                            if ($event.detail.successful) {
+                              $event.target.reset();
+                              document.getElementById('workout-date').value = new Date().toISOString();
+                              $refs.workoutMsg.className = 'mt-2 text-sm text-green-600';
+                              $refs.workoutMsg.textContent = 'Workout logged successfully!';
+                              setTimeout(() => { $refs.workoutMsg.textContent = ''; }, 3000);
+                              htmx.trigger('#recent-activity', 'refresh-activity');
+                            } else {
+                              $refs.workoutMsg.className = 'mt-2 text-sm text-red-600';
+                              $refs.workoutMsg.textContent = 'Error logging workout. Please try again.';
+                            }
+                          "
+                          x-data>
                         <div class="mb-2">
                             <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
                             <input type="number" name="duration_minutes" id="duration"
@@ -90,7 +135,7 @@
                                 class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                             Log Workout
                         </button>
-                        <div id="workout-message" class="mt-2 text-sm"></div>
+                        <div id="workout-message" class="mt-2 text-sm" x-ref="workoutMsg"></div>
                     </form>
                 </div>
             </div>
@@ -99,12 +144,14 @@
         <!-- Recent Activity -->
         <div class="mt-8">
             <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <ul class="divide-y divide-gray-200">
-                    <li class="px-4 py-4 sm:px-6">
-                        <p class="text-sm text-gray-500">No recent activity. Start logging your workouts, meals, and weight!</p>
-                    </li>
-                </ul>
+            <div class="bg-white shadow overflow-hidden sm:rounded-md"
+                 id="recent-activity"
+                 hx-get="/api/recent-activity"
+                 hx-trigger="load, refresh-activity from:body"
+                 hx-swap="innerHTML">
+                <div class="px-4 py-4 sm:px-6">
+                    <p class="text-sm text-gray-500">Loading...</p>
+                </div>
             </div>
         </div>
     </div>

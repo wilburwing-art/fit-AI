@@ -1,9 +1,16 @@
 """AI services using PydanticAI"""
 
+import os
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from src.config import settings
+
+# Set ANTHROPIC_API_KEY environment variable from settings
+# PydanticAI reads from environment variables
+if settings.anthropic_api_key:
+    os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
 
 
 # Structured output models

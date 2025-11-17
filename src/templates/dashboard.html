@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<script>
+    // Redirect to login if not authenticated
+    if (!localStorage.getItem('access_token')) {
+        window.location.href = '/login';
+    }
+</script>
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <!-- Quick Log Weight Card -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Log Weight</h3>
+                    <form hx-post="/api/weight"
+                          hx-target="#weight-message"
+                          hx-swap="innerHTML">
+                        <div class="mb-4">
+                            <label for="weight" class="block text-sm font-medium text-gray-700">Weight (lbs)</label>
+                            <input type="number" name="weight_lbs" id="weight" step="0.1" required
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <input type="hidden" name="date" id="weight-date">
+                        <button type="submit"
+                                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+                            Log Weight
+                        </button>
+                        <div id="weight-message" class="mt-2 text-sm"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quick Log Meal Card -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Log Meal</h3>
+                    <form hx-post="/api/meals"
+                          hx-target="#meal-message"
+                          hx-swap="innerHTML">
+                        <div class="mb-2">
+                            <label for="meal-type" class="block text-sm font-medium text-gray-700">Meal Type</label>
+                            <select name="meal_type" id="meal-type"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option>breakfast</option>
+                                <option>lunch</option>
+                                <option>dinner</option>
+                                <option>snack</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                            <input type="text" name="description" id="description"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <input type="hidden" name="date" id="meal-date">
+                        <button type="submit"
+                                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+                            Log Meal
+                        </button>
+                        <div id="meal-message" class="mt-2 text-sm"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Quick Log Workout Card -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Log Workout</h3>
+                    <form hx-post="/api/workouts"
+                          hx-target="#workout-message"
+                          hx-swap="innerHTML">
+                        <div class="mb-2">
+                            <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+                            <input type="number" name="duration_minutes" id="duration"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="mb-2">
+                            <label for="rpe" class="block text-sm font-medium text-gray-700">RPE (1-10)</label>
+                            <input type="number" name="overall_rpe" id="rpe" min="1" max="10"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <input type="hidden" name="completed_date" id="workout-date">
+                        <button type="submit"
+                                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+                            Log Workout
+                        </button>
+                        <div id="workout-message" class="mt-2 text-sm"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="mt-8">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            <div class="bg-white shadow overflow-hidden sm:rounded-md">
+                <ul class="divide-y divide-gray-200">
+                    <li class="px-4 py-4 sm:px-6">
+                        <p class="text-sm text-gray-500">No recent activity. Start logging your workouts, meals, and weight!</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set current date for forms
+    const now = new Date().toISOString();
+    document.getElementById('weight-date').value = now;
+    document.getElementById('meal-date').value = now;
+    document.getElementById('workout-date').value = now;
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<script>
+    // Redirect to login if not authenticated
+    if (!localStorage.getItem('access_token')) {
+        window.location.href = '/login';
+    }
+</script>
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Workouts</h1>
+
+        <!-- Log Workout Section -->
+        <div class="bg-white overflow-hidden shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Log Workout</h3>
+                <form hx-post="/api/workouts"
+                      hx-target="#workout-message"
+                      hx-swap="innerHTML">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+                            <input type="number" name="duration_minutes" id="duration"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="rpe" class="block text-sm font-medium text-gray-700">RPE (1-10)</label>
+                            <input type="number" name="overall_rpe" id="rpe" min="1" max="10"
+                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                        <textarea name="notes" id="notes" rows="3"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                    </div>
+                    <input type="hidden" name="completed_date" id="workout-date">
+                    <button type="submit"
+                            class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+                        Log Workout
+                    </button>
+                    <div id="workout-message" class="mt-2 text-sm"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Workout History -->
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Workout History</h2>
+                <div id="workout-history">
+                    <p class="text-sm text-gray-500">No workouts logged yet. Start tracking your workouts!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set current date for form
+    const now = new Date().toISOString();
+    document.getElementById('workout-date').value = now;
+</script>
+{% endblock %}

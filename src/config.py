@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     )
 
     # Database
-    database_url: str = "postgresql+asyncpg://user:password@localhost:5432/fitgent"
+    database_url: str = "sqlite+aiosqlite:///./fit_agent.db"
 
     # Redis (Phase 2+)
     redis_url: str = "redis://localhost:6379/0"

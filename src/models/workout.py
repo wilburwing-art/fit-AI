@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Column, Text, ARRAY
+from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSON
 from sqlmodel import Field, SQLModel
 
@@ -35,10 +35,10 @@ class Exercise(SQLModel, table=True):
         default=None, max_length=50
     )  # compound, isolation, cardio
     muscle_groups: list[str] = Field(
-        default_factory=list, sa_column=Column(ARRAY(Text))
+        default_factory=list, sa_column=Column(JSON)
     )
     equipment_required: list[str] = Field(
-        default_factory=list, sa_column=Column(ARRAY(Text))
+        default_factory=list, sa_column=Column(JSON)
     )
     difficulty: Optional[str] = Field(default=None, max_length=20)
     form_cues: Optional[str] = None

@@ -40,6 +40,20 @@ uv run pytest
 uv run pytest --cov=src
 ```
 
+### Linting & Formatting
+```bash
+# Fix linting errors
+uvx ruff check --fix .
+
+# Format code
+uvx ruff format .
+
+# Run both (recommended before commits)
+uvx ruff check --fix . && uvx ruff format .
+```
+
+**Note**: VSCode is configured to auto-format on save using Ruff (see `.vscode/settings.json`). Ensure the Ruff extension is installed.
+
 ### Database Management (when implemented)
 ```bash
 # Run database migrations

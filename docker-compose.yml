@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for storing user data, workouts, meals, and AI-generated plans
+  db:
+    image: postgres:16-alpine
+    container_name: fitgent-db
+    environment:
+      POSTGRES_USER: fituser
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: fitgent
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persist database data between container restarts
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fituser -d fitgent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis cache for AI-generated plans and analysis results (Phase 2+)
+  # Not required for Phase 1 MVP but included for future use
+  redis:
+    image: redis:7-alpine
+    container_name: fitgent-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      # Persist Redis data between container restarts
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Run the Fit Agent application in Docker
+  # By default, use 'uv run uvicorn' locally for faster development
+  # Uncomment this section if you want to run everything in Docker
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: fitgent-app
+  #   ports:
+  #     - "8000:8080"
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://fituser:dev@db:5432/fitgent
+  #     REDIS_URL: redis://redis:6379/0
+  #     SECRET_KEY: ${SECRET_KEY}
+  #     ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+  #     ENVIRONMENT: development
+  #     DEBUG: "true"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     # Mount source code for hot-reloading during development
+  #     - ./src:/app/src
+  #     - ./alembic:/app/alembic
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Usage:
+# - Start all services: docker-compose up -d
+# - View logs: docker-compose logs -f
+# - Stop all services: docker-compose down
+# - Reset database (WARNING: deletes all data): docker-compose down -v

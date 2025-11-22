@@ -82,44 +82,159 @@ See [implementation_status.md](implementation_status.md) for detailed status and
 ### Prerequisites
 
 - Python 3.13+
-- PostgreSQL (or Docker)
+- Docker and Docker Compose (recommended)
 - Anthropic API key
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
+   ```bash
+   git clone <repo-url>
+   cd fit-agent
+   ```
+
+2. **Install dependencies with `uv`:**
+   ```bash
+   uv sync
+   ```
+
+3. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your API keys
+   # DATABASE_URL will be: postgresql+asyncpg://fituser:dev@localhost:5432/fitgent
+   ```
+
+4. **Start database services with Docker Compose:**
+   ```bash
+   docker-compose up -d
+   ```
+   This starts PostgreSQL and Redis. See the [Docker Compose](#docker-compose-setup) section below for details.
+
+5. **Run database migrations:**
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+6. **Start the application:**
+   ```bash
+   uv run uvicorn src.main:app --reload
+   ```
+
+7. **Open your browser** to http://localhost:8000
+
+### Alternative: Manual PostgreSQL Setup
+
+If you prefer not to use Docker Compose, you can run PostgreSQL manually:
+
 ```bash
-git clone <repo-url>
-cd fit-agent
+docker run -d -p 5432:5432 \
+  -e POSTGRES_USER=fituser \
+  -e POSTGRES_PASSWORD=dev \
+  -e POSTGRES_DB=fitgent \
+  --name fitgent-db \
+  postgres:16-alpine
 ```
 
-2. Install dependencies with `uv`:
+## Docker Compose Setup
+
+The project includes a `docker-compose.yml` file that simplifies local development by managing all required services.
+
+### What's Included
+
+**PostgreSQL (db service)**
+- **Purpose**: Primary database for storing all application data
+- **Image**: `postgres:16-alpine` (lightweight PostgreSQL 16)
+- **Port**: 5432 (accessible from host machine)
+- **Credentials**:
+  - User: `fituser`
+  - Password: `dev` (development only!)
+  - Database: `fitgent`
+- **Data Persistence**: Uses named volume `postgres_data` so your data survives container restarts
+- **Health Check**: Ensures database is ready before dependent services start
+
+**Redis (redis service)**
+- **Purpose**: Caching layer for AI-generated plans and analysis results (Phase 2+)
+- **Image**: `redis:7-alpine` (lightweight Redis 7)
+- **Port**: 6379 (accessible from host machine)
+- **Data Persistence**: Uses named volume `redis_data` with AOF (Append-Only File) enabled
+- **Current Status**: Not actively used in Phase 1 MVP, but ready for Phase 2 caching implementation
+
+**Optional App Service (commented out)**
+- The compose file includes a commented-out `app` service for running the FastAPI application in Docker
+- By default, run the app locally with `uv run uvicorn` for faster development (hot-reloading)
+- Uncomment if you prefer a fully containerized environment
+
+### Common Commands
+
 ```bash
-uv sync
+# Start all services in background
+docker-compose up -d
+
+# View logs from all services
+docker-compose logs -f
+
+# View logs from specific service
+docker-compose logs -f db
+
+# Stop all services (keeps data)
+docker-compose down
+
+# Stop and remove all data (⚠️ WARNING: deletes everything)
+docker-compose down -v
+
+# Restart a specific service
+docker-compose restart db
+
+# Check service status
+docker-compose ps
+
+# Execute command in running container
+docker-compose exec db psql -U fituser -d fitgent
 ```
 
-3. Set up environment variables:
+### Database Connection Strings
+
+When services are running, use these connection strings:
+
+**From host machine (running app with `uv run`):**
 ```bash
-cp .env.example .env
-# Edit .env and add your API keys and database URL
+DATABASE_URL=postgresql+asyncpg://fituser:dev@localhost:5432/fitgent
+REDIS_URL=redis://localhost:6379/0
 ```
 
-4. Start PostgreSQL (Docker):
+**From within Docker (if using app service):**
 ```bash
-docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=fitgent postgres:16
+DATABASE_URL=postgresql+asyncpg://fituser:dev@db:5432/fitgent
+REDIS_URL=redis://redis:6379/0
 ```
 
-5. Run database migrations:
+### Troubleshooting
+
+**Port already in use:**
 ```bash
-uv run alembic upgrade head
+# Check what's using port 5432
+sudo lsof -i :5432
+
+# Stop existing PostgreSQL
+sudo systemctl stop postgresql
 ```
 
-6. Start the application:
+**Permission denied errors:**
 ```bash
-uv run uvicorn src.main:app --reload
+# Reset volume permissions
+docker-compose down -v
+docker volume prune
+docker-compose up -d
 ```
 
-7. Open your browser to http://localhost:8000
+**Database connection refused:**
+```bash
+# Wait for health check to pass
+docker-compose ps
+
+# Should show "healthy" status for db service
+```
 
 ## Project Structure
 
@@ -149,6 +264,7 @@ fit-agent/
 │   └── versions/      # Migration scripts
 ├── tests/             # Tests (to be added)
 ├── Dockerfile         # Container definition
+├── docker-compose.yml # Local development services
 ├── fly.toml           # Fly.io deployment config
 └── pyproject.toml     # Project dependencies
 ```
@@ -201,42 +317,63 @@ uv run ruff format src/
 
 ### Fly.io Deployment
 
-1. Install Fly CLI:
-```bash
-curl -L https://fly.io/install.sh | sh
-```
+1. **Install Fly CLI:**
+   ```bash
+   curl -L https://fly.io/install.sh | sh
+   ```
 
-2. Login to Fly:
-```bash
-fly auth login
-```
+2. **Login to Fly:**
+   ```bash
+   fly auth login
+   ```
 
-3. Create app and provision PostgreSQL:
-```bash
-fly launch
-# Follow prompts to create app and database
-```
+3. **Create app and provision PostgreSQL:**
+   ```bash
+   fly launch
+   # Follow prompts to create app and database
+   ```
 
-4. Set secrets:
-```bash
-fly secrets set ANTHROPIC_API_KEY=sk-ant-...
-fly secrets set SECRET_KEY=$(openssl rand -hex 32)
-```
+4. **Set secrets:**
+   ```bash
+   fly secrets set ANTHROPIC_API_KEY=sk-ant-...
+   fly secrets set SECRET_KEY=$(openssl rand -hex 32)
+   ```
 
-5. Deploy:
-```bash
-fly deploy
-```
+5. **Deploy:**
+   ```bash
+   fly deploy
+   ```
 
 ## Environment Variables
 
-See `.env.example` for all configuration options. Key variables:
+See `.env.example` for all configuration options.
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `SECRET_KEY` - Secret key for JWT tokens
-- `ANTHROPIC_API_KEY` - Anthropic API key for Claude
-- `OPENAI_API_KEY` - OpenAI API key (Phase 2+)
-- `LOGFIRE_TOKEN` - Pydantic Logfire token (Phase 2+)
+### Key Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | ✅ Yes |
+| `SECRET_KEY` | Secret key for JWT tokens (generate with `openssl rand -hex 32`) | ✅ Yes |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude models | ✅ Yes |
+| `REDIS_URL` | Redis connection string | Phase 2+ |
+| `OPENAI_API_KEY` | OpenAI API key for GPT models | Phase 2+ |
+| `GOOGLE_API_KEY` | Google API key for Gemini models | Phase 2+ |
+| `LOGFIRE_TOKEN` | Pydantic Logfire observability token | Phase 2+ |
+
+### Example .env File
+
+```bash
+# Core required variables for Phase 1
+DATABASE_URL=postgresql+asyncpg://fituser:dev@localhost:5432/fitgent
+SECRET_KEY=your-secret-key-here-generate-with-openssl-rand-hex-32
+ANTHROPIC_API_KEY=sk-ant-api03-...
+
+# Optional Phase 2+ variables
+REDIS_URL=redis://localhost:6379/0
+OPENAI_API_KEY=sk-...
+GOOGLE_API_KEY=...
+LOGFIRE_TOKEN=...
+```
 
 ## Current Development Focus
 

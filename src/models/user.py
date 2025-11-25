@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, Text, ARRAY
+from sqlalchemy import Column
 from sqlalchemy.dialects.postgresql import JSON
 from sqlmodel import Field, SQLModel
 
@@ -35,7 +35,7 @@ class UserProfile(SQLModel, table=True):
         default=None, max_length=50
     )  # beginner, intermediate, advanced
     equipment_access: list[str] = Field(
-        default_factory=list, sa_column=Column(ARRAY(Text))
+        default_factory=list, sa_column=Column(JSON)
     )
     injuries: Optional[str] = None
     time_availability: Optional[int] = None  # minutes per week

@@ -163,5 +163,33 @@
     document.getElementById('weight-date').value = now;
     document.getElementById('meal-date').value = now;
     document.getElementById('workout-date').value = now;
+
+    // Handle HTMX responses to show success/error messages
+    document.body.addEventListener('htmx:afterRequest', function(event) {
+        const form = event.target;
+        if (!form.tagName || form.tagName !== 'FORM') return;
+
+        const messageTarget = form.querySelector('[id$="-message"]');
+        if (!messageTarget) return;
+
+        if (event.detail.successful) {
+            messageTarget.className = 'mt-2 text-sm text-green-600';
+            messageTarget.textContent = '✓ Logged successfully!';
+            form.reset();
+            // Reset date fields after form reset
+            setTimeout(() => {
+                const now = new Date().toISOString();
+                const dateInput = form.querySelector('input[type="hidden"][name*="date"]');
+                if (dateInput) dateInput.value = now;
+            }, 0);
+        } else {
+            messageTarget.className = 'mt-2 text-sm text-red-600';
+            const status = event.detail.xhr.status;
+            const errorMsg = status === 401 ? 'Not authorized. Please login again.' :
+                           status === 422 ? 'Invalid data. Please check your inputs.' :
+                           'Error: ' + status;
+            messageTarget.textContent = '✗ ' + errorMsg;
+        }
+    });
 </script>
 {% endblock %}

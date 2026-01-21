@@ -9,22 +9,24 @@
     <script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script>
-        // Add JWT token to all HTMX requests
-        document.addEventListener('htmx:configRequest', function(event) {
-            const token = localStorage.getItem('access_token');
-            if (token) {
-                event.detail.headers['Authorization'] = 'Bearer ' + token;
-            }
-        });
+        // Configure HTMX to send credentials (cookies) with requests
+        htmx.config.withCredentials = true;
     </script>
 </head>
 <body class="bg-gray-50 min-h-screen"
       x-data="{
         isLoggedIn: false,
-        init() {
-          this.isLoggedIn = !!localStorage.getItem('access_token');
+        async init() {
+          // Check if logged in by trying to get current user
+          try {
+            const resp = await fetch('/auth/users/me', { credentials: 'include' });
+            this.isLoggedIn = resp.ok;
+          } catch {
+            this.isLoggedIn = false;
+          }
         },
-        logout() {
+        async logout() {
+          await fetch('/auth/cookie/logout', { method: 'POST', credentials: 'include' });
           localStorage.removeItem('access_token');
           window.location.href = '/';
         }

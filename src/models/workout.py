@@ -1,6 +1,6 @@
 """Workout-related models"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -21,7 +21,7 @@ class WorkoutPlan(SQLModel, table=True):
     end_date: datetime
     plan_data: dict = Field(sa_column=Column(JSON))
     ai_rationale: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Exercise(SQLModel, table=True):
@@ -34,12 +34,8 @@ class Exercise(SQLModel, table=True):
     category: Optional[str] = Field(
         default=None, max_length=50
     )  # compound, isolation, cardio
-    muscle_groups: list[str] = Field(
-        default_factory=list, sa_column=Column(JSON)
-    )
-    equipment_required: list[str] = Field(
-        default_factory=list, sa_column=Column(JSON)
-    )
+    muscle_groups: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    equipment_required: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     difficulty: Optional[str] = Field(default=None, max_length=20)
     form_cues: Optional[str] = None
     video_url: Optional[str] = Field(default=None, max_length=500)
@@ -58,7 +54,7 @@ class WorkoutSession(SQLModel, table=True):
     duration_minutes: Optional[int] = None
     overall_rpe: Optional[int] = None  # 1-10
     notes: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ExerciseLog(SQLModel, table=True):

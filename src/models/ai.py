@@ -1,6 +1,6 @@
 """AI analysis and cache models"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -16,12 +16,10 @@ class AnalysisCache(SQLModel, table=True):
 
     id: int = Field(primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", index=True)
-    analysis_type: str = Field(
-        max_length=50
-    )  # weekly_review, progress_summary, etc.
+    analysis_type: str = Field(max_length=50)  # weekly_review, progress_summary, etc.
     analysis_date: datetime = Field(index=True)
     results: dict = Field(sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ScheduledJob(SQLModel, table=True):
@@ -31,9 +29,7 @@ class ScheduledJob(SQLModel, table=True):
 
     id: int = Field(primary_key=True)
     user_id: UUID = Field(foreign_key="users.id")
-    job_type: str = Field(
-        max_length=50
-    )  # weekly_review, plan_adjustment, etc.
+    job_type: str = Field(max_length=50)  # weekly_review, plan_adjustment, etc.
     schedule_expression: str = Field(max_length=100)  # cron format
     last_run: Optional[datetime] = None
     next_run: Optional[datetime] = None

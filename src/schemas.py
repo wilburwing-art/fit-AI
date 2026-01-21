@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi_users import schemas
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # User schemas (FastAPI-Users)
@@ -71,8 +71,8 @@ class WeightLogCreate(BaseModel):
     """Schema for creating weight log"""
 
     date: datetime
-    weight_lbs: Optional[float] = None
-    body_fat_pct: Optional[float] = None
+    weight_lbs: Optional[float] = Field(default=None, ge=50, le=700)
+    body_fat_pct: Optional[float] = Field(default=None, ge=1, le=60)
     measurements: dict = {}
 
     @field_validator("date", mode="before")
@@ -105,12 +105,12 @@ class MealLogCreate(BaseModel):
     """Schema for creating meal log"""
 
     date: datetime
-    meal_type: Optional[str] = None
-    description: Optional[str] = None
-    protein_g: Optional[float] = None
-    carbs_g: Optional[float] = None
-    fat_g: Optional[float] = None
-    calories: Optional[int] = None
+    meal_type: Optional[str] = Field(default=None, max_length=20)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    protein_g: Optional[float] = Field(default=None, ge=0, le=500)
+    carbs_g: Optional[float] = Field(default=None, ge=0, le=1000)
+    fat_g: Optional[float] = Field(default=None, ge=0, le=500)
+    calories: Optional[int] = Field(default=None, ge=0, le=10000)
 
     @field_validator("date", mode="before")
     @classmethod
@@ -146,9 +146,9 @@ class WorkoutSessionCreate(BaseModel):
 
     scheduled_date: Optional[datetime] = None
     completed_date: Optional[datetime] = None
-    duration_minutes: Optional[int] = None
-    overall_rpe: Optional[int] = None
-    notes: Optional[str] = None
+    duration_minutes: Optional[int] = Field(default=None, ge=1, le=480)
+    overall_rpe: Optional[int] = Field(default=None, ge=1, le=10)
+    notes: Optional[str] = Field(default=None, max_length=2000)
 
     @field_validator("scheduled_date", "completed_date", mode="before")
     @classmethod

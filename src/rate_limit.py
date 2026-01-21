@@ -1,7 +1,6 @@
 """Rate limiting configuration and utilities"""
 
 import logging
-from typing import Optional
 
 from fastapi import Request
 from slowapi import Limiter
@@ -66,13 +65,13 @@ def log_rate_limit_hit(request: Request, limit: str):
     path = request.url.path
 
     logger.warning(
-        f"Rate limit exceeded",
+        "Rate limit exceeded",
         extra={
             "identifier": identifier,
             "path": path,
             "limit": limit,
             "headers": dict(request.headers),
-        }
+        },
     )
 
     # TODO: Send to monitoring system (Logfire, Sentry, etc.)
@@ -88,11 +87,9 @@ RATE_LIMITS = {
     "auth_register": "5/hour",
     "auth_login": "10/hour",
     "auth_reset_password": "3/hour",
-
     # AI endpoints (user-based, very strict to prevent cost bombs)
     "ai_workout_plan": "5/day",
     "ai_nutrition_plan": "5/day",
-
     # Data endpoints (user-based, generous for normal usage)
     "data_post": "100/hour",
     "data_get": "200/hour",
@@ -106,7 +103,7 @@ RATE_LIMITS = {
 # - Load balancer IPs
 RATE_LIMIT_EXEMPT_IPS = [
     "127.0.0.1",  # Localhost
-    "::1",        # IPv6 localhost
+    "::1",  # IPv6 localhost
     # Add load balancer/health check IPs here
     # "10.0.0.0/8",  # Example: internal network
 ]

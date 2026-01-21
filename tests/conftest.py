@@ -2,18 +2,15 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
-from src.auth import current_active_user, get_user_manager
 from src.config import settings
 from src.database import get_async_session
 from src.main import app
@@ -262,11 +259,15 @@ def mock_pydantic_ai_agent(mocker, mock_ai_response_workout):
     class MockResult:
         def __init__(self, data):
             self.data = data
-            self.usage = type('obj', (object,), {
-                'total_tokens': 1000,
-                'input_tokens': 500,
-                'output_tokens': 500,
-            })
+            self.usage = type(
+                "obj",
+                (object,),
+                {
+                    "total_tokens": 1000,
+                    "input_tokens": 500,
+                    "output_tokens": 500,
+                },
+            )
 
     async def mock_run(*args, **kwargs):
         return MockResult(mock_ai_response_workout)

@@ -1,6 +1,6 @@
 """Data logging API endpoints"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,9 +24,9 @@ def time_ago(dt: datetime) -> str:
     """Convert datetime to relative time string"""
     # Treat naive datetime as UTC
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     diff = now - dt
 
     seconds = diff.total_seconds()
@@ -227,7 +227,7 @@ async def log_workout(
         workout_session = WorkoutSession(
             user_id=user.id,
             scheduled_date=workout_data.scheduled_date,
-            completed_date=workout_data.completed_date or datetime.utcnow(),
+            completed_date=workout_data.completed_date or datetime.now(UTC),
             duration_minutes=workout_data.duration_minutes,
             overall_rpe=workout_data.overall_rpe,
             notes=workout_data.notes,

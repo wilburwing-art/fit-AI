@@ -12,7 +12,6 @@ from src.config import settings
 if settings.anthropic_api_key:
     os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
 
-
 # Structured output models
 class WorkoutPlanOutput(BaseModel):
     """Structured workout plan output"""
@@ -115,10 +114,10 @@ async def generate_workout_plan(
 
 Goals: {user_goals}
 Experience Level: {experience_level}
-Available Equipment: {', '.join(equipment_access)}
+Available Equipment: {", ".join(equipment_access)}
 Time Availability: {time_availability} minutes per week
-Age: {age if age else 'Not specified'}
-Injuries/Limitations: {injuries if injuries else 'None'}
+Age: {age if age else "Not specified"}
+Injuries/Limitations: {injuries if injuries else "None"}
 
 Generate a complete workout plan with:
 - Appropriate training frequency (workouts per week)
@@ -154,7 +153,7 @@ async def generate_nutrition_targets(
 Goals: {user_goals}
 Current Weight: {weight_lbs} lbs
 Activity Level: {activity_level}
-Dietary Preferences: {dietary_preferences if dietary_preferences else 'None'}
+Dietary Preferences: {dietary_preferences if dietary_preferences else "None"}
 
 Generate nutrition recommendations with:
 - Daily macro targets (protein, carbs, fats)

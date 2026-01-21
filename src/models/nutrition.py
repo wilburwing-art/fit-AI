@@ -1,6 +1,6 @@
 """Nutrition and body metrics models"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -20,7 +20,7 @@ class WeightLog(SQLModel, table=True):
     weight_lbs: Optional[float] = Field(default=None, max_digits=5, decimal_places=1)
     body_fat_pct: Optional[float] = Field(default=None, max_digits=4, decimal_places=1)
     measurements: dict = Field(default_factory=dict, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class MealLog(SQLModel, table=True):
@@ -39,7 +39,7 @@ class MealLog(SQLModel, table=True):
     carbs_g: Optional[float] = Field(default=None, max_digits=5, decimal_places=1)
     fat_g: Optional[float] = Field(default=None, max_digits=5, decimal_places=1)
     calories: Optional[int] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class NutritionTarget(SQLModel, table=True):
@@ -56,4 +56,4 @@ class NutritionTarget(SQLModel, table=True):
     daily_fat_g: int
     daily_calories: int
     ai_rationale: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

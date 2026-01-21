@@ -1,6 +1,6 @@
 """User authentication models"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -20,7 +20,7 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
     is_verified: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class UserProfile(SQLModel, table=True):
@@ -34,13 +34,11 @@ class UserProfile(SQLModel, table=True):
     experience_level: Optional[str] = Field(
         default=None, max_length=50
     )  # beginner, intermediate, advanced
-    equipment_access: list[str] = Field(
-        default_factory=list, sa_column=Column(JSON)
-    )
+    equipment_access: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     injuries: Optional[str] = None
     time_availability: Optional[int] = None  # minutes per week
     preferences: dict = Field(default_factory=dict, sa_column=Column(JSON))
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Goal(SQLModel, table=True):
@@ -56,4 +54,4 @@ class Goal(SQLModel, table=True):
     target_value: Optional[float] = None
     target_date: Optional[datetime] = None
     status: str = Field(default="active", max_length=20)  # active, completed, abandoned
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

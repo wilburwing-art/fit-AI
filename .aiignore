@@ -1,0 +1,48 @@
+# AI Ignore - Files AI assistants should not access
+# Works with Claude Code, Cursor, and other AI tools
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# API keys and credentials
+secrets/
+credentials/
+
+# Generated files
+*.log
+coverage/
+htmlcov/
+.coverage
+
+# Dependencies
+.venv/
+node_modules/
+__pycache__/
+
+# IDE configs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Database
+*.db
+*.sqlite
+
+# Alembic versions (auto-generated)
+alembic/versions/
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/

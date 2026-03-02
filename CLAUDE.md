@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Fit Agent is an AI-powered fitness tracking web application for 2-3 users. It leverages frontier generative AI models (Claude 4.x, GPT-5, Gemini 2.x) to provide personalized workout planning, nutrition guidance, and adaptive long-term coaching.
+Fit Agent is an AI-powered fitness tracking web application for 2-3 users. It uses Claude Sonnet 4.5 via PydanticAI to provide personalized workout planning, nutrition guidance, and adaptive long-term coaching.
 
 **Current Status**: Early development - project structure initialized, comprehensive plan in place (`fit_agent_plan.md`).
 
@@ -12,14 +12,9 @@ Fit Agent is an AI-powered fitness tracking web application for 2-3 users. It le
 
 - **Backend**: FastAPI (async Python)
 - **Database**: PostgreSQL (planned) with SQLModel ORM
-- **AI**: Multi-model strategy via PydanticAI
-  - Claude Opus 4.1 for deep planning/reasoning
-  - Claude Sonnet 4.5 for conversational coaching and analysis
-  - Claude Haiku 4.5 for high-volume validation
-  - GPT-5-mini for structured data extraction
-  - Gemini 2.5 Pro for long-context analysis (1M tokens)
+- **AI**: Claude Sonnet 4.5 for all agents (planning, nutrition, analysis) via PydanticAI. Multi-model planned for Phase 2.
 - **Frontend**: HTMX + Alpine.js + Tailwind CSS
-- **Deployment**: Fly.io (target platform)
+- **Deployment**: Local development (not yet deployed)
 - **Caching**: Redis (planned for Phase 2)
 - **Observability**: Pydantic Logfire
 
@@ -79,32 +74,29 @@ docker run -d -p 6379:6379 redis:7-alpine
 
 ### AI Agent Strategy
 
-The application uses a **multi-model approach** to optimize cost and performance:
+The application currently uses **Claude Sonnet 4.5** for all agents via PydanticAI:
 
-1. **Planning Agent** (Claude Opus 4.1)
+1. **Planning Agent** (Claude Sonnet 4.5)
    - Generates 4-12 week workout programs
-   - Deep reasoning for complex program design
    - Triggered: onboarding, weekly review, user-requested changes
-   - Cost-optimized: runs infrequently
 
 2. **Analysis Agent** (Claude Sonnet 4.5)
    - Identifies trends and patterns in user data
    - Progress summaries and risk flags
    - Triggered: weekly automated, dashboard views
 
-3. **Conversational Agent** (Claude Sonnet 4.5)
-   - Answers coaching questions
+3. **Nutrition Agent** (Claude Sonnet 4.5)
+   - Answers coaching questions and nutrition guidance
    - Context-aware with full user history
-   - User-initiated chat interactions
+
+#### Phase 2 Planned Agents
 
 4. **Data Extraction Agent** (GPT-5-mini)
    - Parses natural language into structured data
    - Fast, cost-effective extraction
-   - Use `reasoning_effort='minimal'` for speed
 
 5. **Long-Context Analysis** (Gemini 2.5 Pro)
    - 1M token context enables complete history analysis
-   - Can include 2+ years of workouts, nutrition, research papers
    - Eliminates need for complex RAG in many cases
 
 ### PydanticAI Usage Pattern
@@ -121,7 +113,7 @@ class WorkoutPlan(BaseModel):
 
 # Create agent with specific model
 planning_agent = Agent(
-    'anthropic:claude-opus-4-1-20250805',
+    'anthropic:claude-sonnet-4-5-20250929',
     result_type=WorkoutPlan,
     system_prompt="""You are an expert strength coach..."""
 )
@@ -234,6 +226,8 @@ SECRET_KEY=<generate-with-openssl-rand-hex-32>
 
 # AI Providers
 ANTHROPIC_API_KEY=sk-ant-...
+
+# Phase 2 (multi-model)
 OPENAI_API_KEY=sk-...
 GOOGLE_API_KEY=...  # For Gemini models
 
@@ -244,9 +238,9 @@ LOGFIRE_TOKEN=...
 ## Key Design Decisions
 
 1. **PostgreSQL from day 1** - avoid migration pain later
-2. **Multi-model AI strategy** - optimize cost vs capability
+2. **PydanticAI agents (Claude Sonnet; multi-model planned Phase 2)** - optimize cost vs capability
 3. **Server-rendered UI** - simpler than SPA, better for small team
-4. **Fly.io hosting** - free tier for MVP, easy scaling
+4. **Local development (deployment TBD)**
 5. **PydanticAI** - type-safe agent orchestration
 6. **HTMX over React** - less complexity, faster development
 

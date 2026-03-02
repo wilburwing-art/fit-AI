@@ -1,309 +1,166 @@
-# Fit Agent - AI-Powered Fitness Tracking
+# Fit Agent
 
-An intelligent fitness tracking web application that leverages cutting-edge AI models to provide personalized workout planning, nutrition guidance, and adaptive coaching.
+AI-powered fitness tracking for a small group (2-3 users). Uses a multi-model strategy across Claude, GPT, and Gemini to generate periodized workout programs, nutrition targets, and adaptive coaching — without the $50+/month API bill that a single-model approach would incur.
 
-## Project Status
+## Architecture
 
-**Phase 1 (MVP): 70% Complete** - Core infrastructure built, critical bugs blocking completion
+```
+  ┌──────────────────────────────────────────────────────────────┐
+  │                        Browser                                │
+  │          HTMX 2.0 + Alpine.js + Tailwind CSS                 │
+  └────────────────────────┬─────────────────────────────────────┘
+                           │
+  ┌────────────────────────▼─────────────────────────────────────┐
+  │                    FastAPI (async)                             │
+  │                                                               │
+  │  Auth ──── Data Logging ──── AI Endpoints ──── Page Routes   │
+  │  (JWT)     (weight,          (workout plan,    (Jinja2        │
+  │             meals,            nutrition plan)    templates)    │
+  │             workouts)                                         │
+  └──────────┬───────────────────────┬───────────────────────────┘
+             │                       │
+  ┌──────────▼──────────┐  ┌────────▼────────────────────────────┐
+  │   PostgreSQL 16     │  │   PydanticAI Multi-Model Strategy   │
+  │   + SQLModel ORM    │  │                                     │
+  │                     │  │   Planning ─── Claude Opus 4.1      │
+  │   users             │  │   Analysis ─── Claude Sonnet 4.5    │
+  │   profiles          │  │   Coaching ─── Claude Sonnet 4.5    │
+  │   workout_plans     │  │   Extraction ─ GPT-5-mini           │
+  │   workout_sessions  │  │   Long-ctx ─── Gemini 2.5 Pro (1M) │
+  │   exercise_logs     │  │                                     │
+  │   meal_logs         │  │   Target: $10-20/month              │
+  │   weight_logs       │  │   for 2-3 users                     │
+  │   nutrition_targets │  └─────────────────────────────────────┘
+  └─────────────────────┘
+```
 
-See [implementation_status.md](implementation_status.md) for detailed status and next steps.
+### Multi-Model AI Strategy
+
+Each model is matched to its strength to optimize cost and quality:
+
+| Agent | Model | Trigger | Why This Model |
+|-------|-------|---------|----------------|
+| **Planning** | Claude Opus 4.1 | Onboarding, weekly review | Deep reasoning for periodized program design |
+| **Analysis** | Claude Sonnet 4.5 | Weekly automated job | Trend detection at moderate cost |
+| **Coaching** | Claude Sonnet 4.5 | User chat | Conversational, context-aware responses |
+| **Extraction** | GPT-5-mini | Every log entry | Fast, cheap NL-to-structured-data parsing |
+| **Long-Context** | Gemini 2.5 Pro | Deep analysis | 1M tokens = 2+ years of history without RAG |
 
 ## Features
 
-### Implemented ✅
-
-- **User Authentication**: Secure registration and login with FastAPI-Users
-- **Type-Safe Database**: PostgreSQL with SQLModel ORM for full type safety
-- **Database Migrations**: Alembic with initial schema migration
-- **Modern UI**: Clean, responsive interface built with HTMX, Alpine.js, and Tailwind CSS
-- **AI Integration Framework**: PydanticAI agents configured with Claude Sonnet 4.5
-- **API Endpoints**: Full REST API for data logging and AI features
-- **Deployment Configuration**: Dockerfile and fly.toml ready
-
-### In Progress ⚠️
-
-- **Data Logging**: API endpoints functional but HTMX auth bug blocks UI (401 errors)
-- **AI Features**: Agents implemented but untested end-to-end
-- **Frontend Data Display**: History sections show placeholders, not fetching real data
-
-### Known Issues 🚨
-
-1. **HTMX Authorization Bug** (BLOCKER) - JWT tokens not sent with HTMX requests → 401 on all data logging
-2. **AI Endpoints Untested** - Never tested with real API calls
-3. **Tailwind CDN** - Using CDN in development, needs production build
-4. **No Test Suite** - Zero tests written
-
-### Future Features 🚀
-
-**Workout Calendar Visualization**
-- Interactive calendar with color-coded days indicating workout completion
-- Hover/click to view workout duration and summary
-- Fun volume comparison feature: total weight lifted converted to random object equivalents
-  - Examples: "You lifted 50 refrigerators today!" or "That's 2.5 pickup trucks!"
-  - Randomized objects from a large pool (never repeats)
-  - Shareable workout achievements
-
-**Workout Plan Database**
-- Pre-built library of proven workout programs from trusted sources
-- Curated plans from:
-  - [LiftVault.com](https://liftvault.com) - comprehensive collection of strength programs
-  - nSuns LP, 5/3/1 variations, GZCL programs
-  - Reddit PPL, Starting Strength, StrongLifts 5x5
-  - Bodybuilding.com program database
-  - Renaissance Periodization templates
-- Program features:
-  - Full exercise breakdowns with sets/reps/intensity
-  - Progression schemes and deload protocols
-  - Equipment variations (barbell/dumbbell/bodyweight)
-  - Experience level filtering (beginner/intermediate/advanced)
-  - Goal-based selection (strength/hypertrophy/powerlifting)
-- One-click program import with AI-powered customization to user's:
-  - Available equipment
-  - Training frequency
-  - Experience level
-  - Specific goals and injuries
-- Program tracking with built-in periodization and auto-regulation
-
-**AI-Powered Body Measurements**
-- See [body-measurement-feature-plan.md](body-measurement-feature-plan.md) for detailed plan on AI-powered body measurement analysis (mobile feature using pose estimation and depth sensing)
-
-## Tech Stack
-
-- **Backend**: FastAPI (async Python)
-- **Database**: PostgreSQL with SQLModel ORM
-- **AI**: PydanticAI with Claude Sonnet 4.5
-- **Frontend**: HTMX + Alpine.js + Tailwind CSS
-- **Auth**: FastAPI-Users (JWT)
-- **Migrations**: Alembic
-- **Observability**: Pydantic Logfire (ready for Phase 2)
+- **Workout plan generation** — AI-generated periodized programs (4-12 weeks) adapted to equipment, experience, injuries, and time constraints
+- **Nutrition targets** — Macro calculations and meal suggestions based on goals and body composition
+- **Data logging** — Track weight, meals, and workouts through a server-rendered UI
+- **Progress analysis** — Automated weekly trend detection and coaching adjustments
+- **JWT authentication** — Secure registration and login via FastAPI-Users
+- **Rate-limited AI** — Per-user limits prevent cost spirals (5 AI requests/day)
 
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.13+
-- PostgreSQL (or Docker)
-- Anthropic API key
+- PostgreSQL 16 (or Docker)
+- [Anthropic API key](https://console.anthropic.com)
 
-### Installation
+### Setup
 
-1. Clone the repository:
 ```bash
-git clone <repo-url>
-cd fit-agent
-```
+git clone https://github.com/wilburwing-art/fit-AI.git
+cd fit-AI
 
-2. Install dependencies with `uv`:
-```bash
 uv sync
-```
 
-3. Set up environment variables:
-```bash
 cp .env.example .env
-# Edit .env and add your API keys and database URL
-```
+# Add DATABASE_URL, SECRET_KEY, ANTHROPIC_API_KEY
 
-4. Start PostgreSQL (Docker):
-```bash
+# Start PostgreSQL
 docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=fitgent postgres:16
-```
 
-5. Run database migrations:
-```bash
+# Run migrations
 uv run alembic upgrade head
-```
 
-6. Start the application:
-```bash
+# Start the app
 uv run uvicorn src.main:app --reload
 ```
 
-7. Open your browser to http://localhost:8000
+Open http://localhost:8000
+
+### Deploy to Fly.io
+
+```bash
+fly launch
+fly secrets set ANTHROPIC_API_KEY=sk-ant-... SECRET_KEY=$(openssl rand -hex 32)
+fly deploy
+```
+
+Configured for 512MB VM with auto-scaling (0-25 connections) in `fly.toml`.
 
 ## Project Structure
 
 ```
-fit-agent/
-├── src/
-│   ├── api/           # API routes
-│   │   ├── auth.py    # Authentication endpoints
-│   │   ├── data.py    # Data logging endpoints
-│   │   ├── ai.py      # AI-powered endpoints
-│   │   └── pages.py   # HTML page routes
-│   ├── models/        # SQLModel database models
-│   │   ├── user.py    # User and profile models
-│   │   ├── workout.py # Workout-related models
-│   │   ├── nutrition.py # Nutrition and weight models
-│   │   └── ai.py      # AI cache and jobs
-│   ├── services/      # Business logic
-│   │   └── ai.py      # PydanticAI agents
-│   ├── templates/     # HTML templates
-│   ├── static/        # Static assets
-│   ├── config.py      # Configuration
-│   ├── database.py    # Database connection
-│   ├── auth.py        # Authentication setup
-│   ├── schemas.py     # Pydantic schemas
-│   └── main.py        # FastAPI application
-├── alembic/           # Database migrations
-│   └── versions/      # Migration scripts
-├── tests/             # Tests (to be added)
-├── Dockerfile         # Container definition
-├── fly.toml           # Fly.io deployment config
-└── pyproject.toml     # Project dependencies
+src/
+├── api/
+│   ├── auth.py       # Registration, login, password reset (FastAPI-Users)
+│   ├── data.py       # Weight, meal, workout logging endpoints
+│   ├── ai.py         # Workout plan + nutrition plan generation
+│   └── pages.py      # Server-rendered HTML routes (Jinja2)
+├── models/
+│   ├── user.py       # User, UserProfile, Goal (SQLModel)
+│   ├── workout.py    # WorkoutPlan, WorkoutSession, ExerciseLog
+│   └── nutrition.py  # WeightLog, MealLog, NutritionTarget
+├── services/
+│   └── ai.py         # PydanticAI agent definitions + orchestration
+├── templates/        # HTMX + Alpine.js templates
+├── config.py         # Pydantic Settings (env vars)
+├── database.py       # Async PostgreSQL connection
+├── auth.py           # JWT strategy, user manager
+├── schemas.py        # Request/response validation
+└── main.py           # FastAPI app factory
 ```
 
-## API Endpoints
+## API
 
-### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/jwt/login` - Login (returns JWT)
-- `POST /auth/jwt/logout` - Logout
-- `GET /auth/users/me` - Get current user
+### Auth
+```
+POST /auth/register         # Create account
+POST /auth/jwt/login        # Login (returns JWT)
+GET  /auth/users/me         # Current user profile
+```
 
 ### Data Logging
-- `POST /api/weight` - Log weight and measurements
-- `GET /api/weight` - Get weight history
-- `POST /api/meals` - Log meal
-- `GET /api/meals` - Get meal history
-- `POST /api/workouts` - Log workout session
-- `GET /api/workouts` - Get workout history
-
-### AI Features
-- `POST /api/ai/generate-workout-plan` - Generate personalized workout plan
-- `POST /api/ai/generate-nutrition-plan` - Generate nutrition targets
-
-## Development
-
-### Running Tests
-```bash
-uv run pytest
+```
+POST /api/weight            # Log weight + measurements
+POST /api/meals             # Log meal with macros
+POST /api/workouts          # Log workout session
+GET  /api/recent-activity   # Combined activity feed
 ```
 
-### Creating Database Migrations
-```bash
-# Generate migration
-uv run alembic revision --autogenerate -m "description"
-
-# Apply migration
-uv run alembic upgrade head
-
-# Rollback migration
-uv run alembic downgrade -1
+### AI
 ```
-
-### Code Formatting
-```bash
-uv run ruff format src/
-```
-
-## Deployment
-
-### Fly.io Deployment
-
-1. Install Fly CLI:
-```bash
-curl -L https://fly.io/install.sh | sh
-```
-
-2. Login to Fly:
-```bash
-fly auth login
-```
-
-3. Create app and provision PostgreSQL:
-```bash
-fly launch
-# Follow prompts to create app and database
-```
-
-4. Set secrets:
-```bash
-fly secrets set ANTHROPIC_API_KEY=sk-ant-...
-fly secrets set SECRET_KEY=$(openssl rand -hex 32)
-```
-
-5. Deploy:
-```bash
-fly deploy
+POST /api/ai/generate-workout-plan     # Periodized program generation
+POST /api/ai/generate-nutrition-plan   # Macro targets + meal suggestions
 ```
 
 ## Environment Variables
 
-See `.env.example` for all configuration options. Key variables:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL async connection string |
+| `SECRET_KEY` | Yes | JWT signing key (`openssl rand -hex 32`) |
+| `ANTHROPIC_API_KEY` | Yes | Claude API access |
+| `OPENAI_API_KEY` | Phase 2 | GPT-5-mini for data extraction |
+| `GOOGLE_API_KEY` | Phase 2 | Gemini 2.5 Pro for long-context analysis |
+| `REDIS_URL` | Phase 2 | Caching AI responses (7-day TTL) |
+| `LOGFIRE_TOKEN` | Phase 2 | Pydantic Logfire observability |
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `SECRET_KEY` - Secret key for JWT tokens
-- `ANTHROPIC_API_KEY` - Anthropic API key for Claude
-- `OPENAI_API_KEY` - OpenAI API key (Phase 2+)
-- `LOGFIRE_TOKEN` - Pydantic Logfire token (Phase 2+)
+## Tech Stack
 
-## Current Development Focus
-
-### Week 1: Fix Blockers (8-10 hours)
-
-1. **Debug HTMX Auth Bug** (2-3 hours)
-   - Fix JavaScript in `base.html`
-   - Test weight/meal/workout logging
-   - Verify 200 responses and data persists
-
-2. **Test AI Endpoints** (1-2 hours)
-   - Call `/api/ai/generate-workout-plan` manually
-   - Verify structured output works
-   - Document API usage
-
-3. **Add Basic Error Handling** (2-3 hours)
-   - Wrap routes in try/except
-   - Return user-friendly messages
-   - Show success/error in UI
-
-### Week 2: Polish MVP (8-11 hours)
-
-4. **Fetch and Display Real Data** (3-4 hours)
-   - Load recent activity on dashboard
-   - Show workout/meal history on respective pages
-   - Replace placeholder text
-
-5. **Add Pytest Suite** (2-3 hours)
-   - Test auth flow
-   - Mock AI responses
-   - Test data logging endpoints
-
-6. **Compile Tailwind CSS** (1 hour)
-   - Remove CDN script
-   - Build production CSS
-
-7. **Deploy to Fly.io** (2-3 hours)
-   - Test deployment configuration
-   - Provision database
-   - Deploy and test
+Python 3.13+ / FastAPI / PostgreSQL 16 / SQLModel / PydanticAI / Claude + GPT + Gemini / HTMX + Alpine.js + Tailwind CSS / FastAPI-Users (JWT) / Alembic / Fly.io
 
 ## Roadmap
 
-### Phase 2: AI Agents (Next)
-- Multi-model AI strategy (Claude Opus, GPT-5-mini, Gemini)
-- Background scheduling for weekly analysis
-- Redis caching layer
-- Natural language logging
-- Enhanced observability with Logfire
-
-### Phase 3: UX Polish
-- Data visualizations (Chart.js)
-- Mobile optimization
-- Exercise library
-- Workout timer
-- PR tracking
-
-### Phase 4: Advanced AI
-- RAG with exercise science papers
-- Multi-modal (photo/video analysis)
-- Predictive modeling
-- External integrations
-
-## Contributing
-
-This is a personal project for 2-3 users. Contributions are not currently being accepted.
-
-## License
-
-Private - All Rights Reserved
+**Phase 1 (current)** — Core logging, auth, basic AI generation, Fly.io deployment
+**Phase 2** — Multi-model orchestration, Redis caching, background scheduling, NL logging
+**Phase 3** — Chart.js visualizations, exercise library, workout timer, PR tracking
+**Phase 4** — RAG with exercise science papers, photo/video analysis, predictive modeling

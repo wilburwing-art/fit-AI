@@ -1,6 +1,6 @@
 # Fit Agent
 
-AI-powered fitness tracking for a small group (2-3 users). Uses a multi-model strategy across Claude, GPT, and Gemini to generate periodized workout programs, nutrition targets, and adaptive coaching — without the $50+/month API bill that a single-model approach would incur.
+AI-powered fitness tracking for a small group (2-3 users). Uses Claude Sonnet via PydanticAI agents for workout programming, nutrition planning, and progress analysis. Server-rendered with HTMX for zero-JS-framework simplicity.
 
 ## Architecture
 
@@ -20,38 +20,36 @@ AI-powered fitness tracking for a small group (2-3 users). Uses a multi-model st
   └──────────┬───────────────────────┬───────────────────────────┘
              │                       │
   ┌──────────▼──────────┐  ┌────────▼────────────────────────────┐
-  │   PostgreSQL 16     │  │   PydanticAI Multi-Model Strategy   │
-  │   + SQLModel ORM    │  │                                     │
-  │                     │  │   Planning ─── Claude Opus 4.1      │
-  │   users             │  │   Analysis ─── Claude Sonnet 4.5    │
-  │   profiles          │  │   Coaching ─── Claude Sonnet 4.5    │
-  │   workout_plans     │  │   Extraction ─ GPT-5-mini           │
-  │   workout_sessions  │  │   Long-ctx ─── Gemini 2.5 Pro (1M) │
+  │   PostgreSQL 16     │  │   PydanticAI Agents                 │
+  │   + SQLModel ORM    │  │   (Claude Sonnet 4.5)               │
+  │                     │  │                                     │
+  │   users             │  │   Planning ─── workout programs     │
+  │   profiles          │  │   Nutrition ── macro targets        │
+  │   workout_plans     │  │   Analysis ─── progress trends      │
+  │   workout_sessions  │  │                                     │
   │   exercise_logs     │  │                                     │
-  │   meal_logs         │  │   Target: $10-20/month              │
-  │   weight_logs       │  │   for 2-3 users                     │
+  │   meal_logs         │  │                                     │
+  │   weight_logs       │  │                                     │
   │   nutrition_targets │  └─────────────────────────────────────┘
   └─────────────────────┘
 ```
 
-### Multi-Model AI Strategy
+### AI Agents
 
-Each model is matched to its strength to optimize cost and quality:
+All agents currently run on Claude Sonnet 4.5 via PydanticAI:
 
-| Agent | Model | Trigger | Why This Model |
-|-------|-------|---------|----------------|
-| **Planning** | Claude Opus 4.1 | Onboarding, weekly review | Deep reasoning for periodized program design |
-| **Analysis** | Claude Sonnet 4.5 | Weekly automated job | Trend detection at moderate cost |
-| **Coaching** | Claude Sonnet 4.5 | User chat | Conversational, context-aware responses |
-| **Extraction** | GPT-5-mini | Every log entry | Fast, cheap NL-to-structured-data parsing |
-| **Long-Context** | Gemini 2.5 Pro | Deep analysis | 1M tokens = 2+ years of history without RAG |
+| Agent | Purpose | Trigger |
+|-------|---------|---------|
+| **Planning** | Generate periodized workout programs (4-12 weeks) | Onboarding, user request |
+| **Nutrition** | Macro targets and meal suggestions | User request |
+| **Analysis** | Progress trend detection and coaching adjustments | Weekly, dashboard views |
 
 ## Features
 
-- **Workout plan generation** — AI-generated periodized programs (4-12 weeks) adapted to equipment, experience, injuries, and time constraints
+- **Workout plan generation** — AI-generated periodized programs adapted to equipment, experience, injuries, and time constraints
 - **Nutrition targets** — Macro calculations and meal suggestions based on goals and body composition
 - **Data logging** — Track weight, meals, and workouts through a server-rendered UI
-- **Progress analysis** — Automated weekly trend detection and coaching adjustments
+- **Progress analysis** — Trend detection and coaching adjustments
 - **JWT authentication** — Secure registration and login via FastAPI-Users
 - **Rate-limited AI** — Per-user limits prevent cost spirals (5 AI requests/day)
 
@@ -86,15 +84,9 @@ uv run uvicorn src.main:app --reload
 
 Open http://localhost:8000
 
-### Deploy to Fly.io
+### Deployment
 
-```bash
-fly launch
-fly secrets set ANTHROPIC_API_KEY=sk-ant-... SECRET_KEY=$(openssl rand -hex 32)
-fly deploy
-```
-
-Configured for 512MB VM with auto-scaling (0-25 connections) in `fly.toml`.
+Not yet deployed. Local development only.
 
 ## Project Structure
 
@@ -149,18 +141,14 @@ POST /api/ai/generate-nutrition-plan   # Macro targets + meal suggestions
 | `DATABASE_URL` | Yes | PostgreSQL async connection string |
 | `SECRET_KEY` | Yes | JWT signing key (`openssl rand -hex 32`) |
 | `ANTHROPIC_API_KEY` | Yes | Claude API access |
-| `OPENAI_API_KEY` | Phase 2 | GPT-5-mini for data extraction |
-| `GOOGLE_API_KEY` | Phase 2 | Gemini 2.5 Pro for long-context analysis |
-| `REDIS_URL` | Phase 2 | Caching AI responses (7-day TTL) |
-| `LOGFIRE_TOKEN` | Phase 2 | Pydantic Logfire observability |
 
 ## Tech Stack
 
-Python 3.13+ / FastAPI / PostgreSQL 16 / SQLModel / PydanticAI / Claude + GPT + Gemini / HTMX + Alpine.js + Tailwind CSS / FastAPI-Users (JWT) / Alembic / Fly.io
+Python 3.13+ / FastAPI / PostgreSQL 16 / SQLModel / PydanticAI / Claude Sonnet / HTMX + Alpine.js + Tailwind CSS / FastAPI-Users (JWT) / Alembic
 
 ## Roadmap
 
-**Phase 1 (current)** — Core logging, auth, basic AI generation, Fly.io deployment
-**Phase 2** — Multi-model orchestration, Redis caching, background scheduling, NL logging
+**Phase 1 (current)** — Core logging, auth, AI generation with Claude Sonnet
+**Phase 2** — Multi-model orchestration (GPT for extraction, Gemini for long-context), Redis caching, background scheduling, NL logging
 **Phase 3** — Chart.js visualizations, exercise library, workout timer, PR tracking
 **Phase 4** — RAG with exercise science papers, photo/video analysis, predictive modeling

@@ -8,6 +8,8 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <script>
         // Configure HTMX to send credentials (cookies) with requests
         htmx.config.withCredentials = true;
@@ -27,7 +29,6 @@
         },
         async logout() {
           await fetch('/auth/cookie/logout', { method: 'POST', credentials: 'include' });
-          localStorage.removeItem('access_token');
           window.location.href = '/';
         }
       }">

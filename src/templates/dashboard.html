@@ -3,12 +3,6 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<script>
-    // Redirect to login if not authenticated
-    if (!localStorage.getItem('access_token')) {
-        window.location.href = '/login';
-    }
-</script>
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
         <h1 class="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
@@ -141,6 +135,28 @@
             </div>
         </div>
 
+        <!-- Progress Charts -->
+        <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div class="bg-white overflow-hidden shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Weight Trend</h3>
+                <div class="relative" style="height: 280px;">
+                    <canvas id="weight-chart"></canvas>
+                </div>
+                <p id="weight-chart-empty" class="hidden text-sm text-gray-400 text-center py-12">
+                    No weight data yet. Log your first weigh-in above.
+                </p>
+            </div>
+            <div class="bg-white overflow-hidden shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Workout Activity</h3>
+                <div class="relative" style="height: 280px;">
+                    <canvas id="workout-chart"></canvas>
+                </div>
+                <p id="workout-chart-empty" class="hidden text-sm text-gray-400 text-center py-12">
+                    No workout data yet. Log your first session above.
+                </p>
+            </div>
+        </div>
+
         <!-- Recent Activity -->
         <div class="mt-8">
             <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
@@ -189,6 +205,173 @@
                            status === 422 ? 'Invalid data. Please check your inputs.' :
                            'Error: ' + status;
             messageTarget.textContent = '✗ ' + errorMsg;
+        }
+    });
+
+    // --- Progress Charts ---
+    const chartColors = {
+        indigo: 'rgb(79, 70, 229)',
+        indigoLight: 'rgba(79, 70, 229, 0.1)',
+        amber: 'rgb(245, 158, 11)',
+        amberLight: 'rgba(245, 158, 11, 0.3)',
+    };
+
+    const sharedScaleOpts = {
+        grid: { color: 'rgba(0,0,0,0.04)' },
+        ticks: { font: { size: 11 }, color: '#6b7280' },
+    };
+
+    let weightChart = null;
+    let workoutChart = null;
+
+    async function loadWeightChart() {
+        try {
+            const resp = await fetch('/api/weight', { credentials: 'include' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const points = data
+                .filter(d => d.weight_lbs != null)
+                .map(d => ({ x: new Date(d.date), y: d.weight_lbs }))
+                .sort((a, b) => a.x - b.x);
+
+            const canvas = document.getElementById('weight-chart');
+            const empty = document.getElementById('weight-chart-empty');
+            if (points.length === 0) {
+                canvas.style.display = 'none';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            if (weightChart) weightChart.destroy();
+            weightChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Weight (lbs)',
+                        data: points,
+                        borderColor: chartColors.indigo,
+                        backgroundColor: chartColors.indigoLight,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.parsed.y.toFixed(1)} lbs`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'day', tooltipFormat: 'MMM d, yyyy' },
+                            ...sharedScaleOpts,
+                        },
+                        y: {
+                            title: { display: true, text: 'lbs', font: { size: 11 } },
+                            ...sharedScaleOpts,
+                        }
+                    }
+                }
+            });
+        } catch (e) { /* auth redirect or network error — fail silently */ }
+    }
+
+    async function loadWorkoutChart() {
+        try {
+            const resp = await fetch('/api/workouts', { credentials: 'include' });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const items = data
+                .filter(d => d.duration_minutes != null)
+                .map(d => ({
+                    x: new Date(d.completed_date || d.created_at),
+                    duration: d.duration_minutes,
+                    rpe: d.overall_rpe,
+                }))
+                .sort((a, b) => a.x - b.x);
+
+            const canvas = document.getElementById('workout-chart');
+            const empty = document.getElementById('workout-chart-empty');
+            if (items.length === 0) {
+                canvas.style.display = 'none';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            if (workoutChart) workoutChart.destroy();
+            workoutChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: items.map(d => d.x),
+                    datasets: [
+                        {
+                            label: 'Duration (min)',
+                            data: items.map(d => d.duration),
+                            backgroundColor: chartColors.indigoLight,
+                            borderColor: chartColors.indigo,
+                            borderWidth: 1,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'RPE',
+                            data: items.map(d => d.rpe),
+                            type: 'line',
+                            borderColor: chartColors.amber,
+                            backgroundColor: chartColors.amberLight,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            tension: 0.3,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'day', tooltipFormat: 'MMM d, yyyy' },
+                            ...sharedScaleOpts,
+                        },
+                        y: {
+                            position: 'left',
+                            title: { display: true, text: 'Minutes', font: { size: 11 } },
+                            ...sharedScaleOpts,
+                        },
+                        y1: {
+                            position: 'right',
+                            min: 1,
+                            max: 10,
+                            title: { display: true, text: 'RPE', font: { size: 11 } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { stepSize: 1, font: { size: 11 }, color: '#6b7280' },
+                        }
+                    }
+                }
+            });
+        } catch (e) { /* fail silently */ }
+    }
+
+    // Load charts on page load and refresh after logging
+    loadWeightChart();
+    loadWorkoutChart();
+
+    document.body.addEventListener('htmx:afterSettle', function(event) {
+        if (event.target.id === 'recent-activity') {
+            loadWeightChart();
+            loadWorkoutChart();
         }
     });
 </script>

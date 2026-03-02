@@ -166,7 +166,7 @@ Key tables:
 - PostgreSQL schema + SQLModel models
 - Basic UI for logging (weight, meals, workouts)
 - Simple AI integration (workout plan generation)
-- Deploy to Fly.io
+- Deploy (platform TBD)
 
 ### Phase 2: AI Agents (Week 3-4)
 - PydanticAI agent orchestration

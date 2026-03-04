@@ -28,11 +28,20 @@ uv sync
 # Run the application (when FastAPI is implemented)
 uv run uvicorn src.main:app --reload
 
-# Run tests (when implemented)
-uv run pytest
+# Run unit + integration + contract tests (~125)
+uv run pytest -m "not e2e" -v
 
-# Run with coverage
-uv run pytest --cov=src
+# Run E2E browser tests (~19, requires Playwright chromium)
+uv run pytest -m e2e -v
+
+# Run contract tests only (~35)
+uv run pytest -m contract -v
+
+# Run with coverage (exclude E2E)
+uv run pytest -m "not e2e" --cov=src
+
+# Install Playwright browsers (first time only)
+uv run playwright install chromium
 ```
 
 ### Linting & Formatting

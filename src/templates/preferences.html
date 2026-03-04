@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Training Preferences - Fit Agent{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-6 px-4 sm:px-6 lg:px-8" x-data="prefsForm()">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Training Preferences</h1>
+
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 space-y-6">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Training Goal</label>
+            <select x-model="prefs.training_goal"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm border px-3 py-2">
+                <option value="">Select a goal...</option>
+                <option value="muscle_gain">Muscle Gain</option>
+                <option value="strength">Strength</option>
+                <option value="weight_loss">Weight Loss</option>
+                <option value="endurance">Endurance</option>
+                <option value="general">General Fitness</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Training Split</label>
+            <select x-model="prefs.training_split"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm border px-3 py-2">
+                <option value="">Select a split...</option>
+                <option value="full_body">Full Body</option>
+                <option value="upper_lower">Upper / Lower</option>
+                <option value="push_pull_legs">Push / Pull / Legs</option>
+                <option value="bro_split">Bro Split (1 muscle/day)</option>
+            </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Days per Week</label>
+                <input type="number" x-model.number="prefs.days_per_week" min="1" max="7"
+                       class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Session Duration (min)</label>
+                <input type="number" x-model.number="prefs.session_duration_minutes" min="15" max="180"
+                       class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weekly Volume Target (sets)</label>
+                <input type="number" x-model.number="prefs.weekly_volume_target" min="0"
+                       class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Weekly Cardio (min)</label>
+                <input type="number" x-model.number="prefs.weekly_cardio_minutes" min="0"
+                       class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
+            </div>
+        </div>
+
+        <div class="pt-4 border-t dark:border-gray-700">
+            <button @click="save()" :disabled="saving"
+                    class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50 touch-target">
+                <span x-text="saving ? 'Saving...' : 'Save Preferences'"></span>
+            </button>
+            <span x-show="saved" class="ml-3 text-sm text-green-600" x-transition>Saved</span>
+        </div>
+    </div>
+
+    <!-- Data Export -->
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mt-8">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Data Export</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Download your fitness data as JSON or CSV.</p>
+        <div class="flex items-center gap-4 flex-wrap">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time Range</label>
+                <select x-model="exportDays"
+                        class="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
+                    <option value="30">Last 30 days</option>
+                    <option value="90" selected>Last 90 days</option>
+                    <option value="180">Last 6 months</option>
+                    <option value="365">Last year</option>
+                </select>
+            </div>
+            <div class="flex gap-2 mt-5">
+                <a :href="'/api/export/json?days=' + exportDays"
+                   class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm touch-target">JSON</a>
+                <a :href="'/api/export/csv?days=' + exportDays"
+                   class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm touch-target">CSV</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function prefsForm() {
+    return {
+        prefs: {
+            training_goal: '',
+            training_split: '',
+            days_per_week: 4,
+            session_duration_minutes: 60,
+            weekly_volume_target: 100,
+            weekly_cardio_minutes: 60,
+        },
+        exportDays: 90,
+        saving: false,
+        saved: false,
+        async init() {
+            try {
+                const resp = await fetch('/api/analytics/preferences', {credentials: 'include'});
+                if (resp.ok) {
+                    const data = await resp.json();
+                    Object.keys(this.prefs).forEach(k => {
+                        if (data[k] != null) this.prefs[k] = data[k];
+                    });
+                }
+            } catch(e) {}
+        },
+        async save() {
+            this.saving = true;
+            this.saved = false;
+            try {
+                const resp = await fetch('/api/analytics/preferences', {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(this.prefs),
+                });
+                if (resp.ok) {
+                    this.saved = true;
+                    setTimeout(() => { this.saved = false; }, 3000);
+                }
+            } catch(e) {}
+            this.saving = false;
+        },
+    };
+}
+</script>
+{% endblock %}

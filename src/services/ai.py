@@ -50,6 +50,7 @@ _planning_agent: Agent | None = None
 _nutrition_agent: Agent | None = None
 _analysis_agent: Agent | None = None
 _long_context_agent: Agent | None = None
+_coaching_agent: Agent | None = None
 
 
 def get_planning_agent() -> Agent:
@@ -119,6 +120,27 @@ def get_analysis_agent() -> Agent:
         Be supportive but honest. Celebrate wins and provide constructive feedback.""",
         )
     return _analysis_agent
+
+
+def get_coaching_agent() -> Agent:
+    """Get or create the coaching agent (uses coaching_model — Sonnet by default)."""
+    global _coaching_agent
+    if _coaching_agent is None:
+        _coaching_agent = Agent(
+            settings.coaching_model,
+            system_prompt="""You are an expert fitness coach and sports scientist.
+
+Answer the user's question using the provided context about their recent training,
+nutrition, and body metrics. Be concise, evidence-based, and actionable.
+
+Guidelines:
+1. Reference their actual data when relevant (weights lifted, calories, trends)
+2. Give specific, practical advice — not generic tips
+3. If the question is outside your expertise, say so
+4. Keep answers focused: 2-4 paragraphs max
+5. Be encouraging but honest about areas needing improvement""",
+        )
+    return _coaching_agent
 
 
 def get_long_context_agent() -> Agent:
@@ -244,6 +266,20 @@ Provide a concise analysis with:
 2. Progress assessment
 3. Specific recommendations for improvement
 """
+
+    result = await agent.run(prompt)
+    return result.data
+
+
+@logfire.instrument("ai:coaching_qa")
+async def coaching_qa(question: str, user_context: str) -> str:
+    """Answer a coaching question with user context."""
+    agent = get_coaching_agent()
+
+    prompt = f"""User context:
+{user_context}
+
+Question: {question}"""
 
     result = await agent.run(prompt)
     return result.data

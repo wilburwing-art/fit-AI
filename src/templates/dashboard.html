@@ -1,378 +1,255 @@
 {% extends "base.html" %}
-
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
-        <h1 class="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Dashboard</h1>
 
+        <!-- Quick Log Cards -->
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <!-- Quick Log Weight Card -->
-            <div class="bg-white overflow-hidden shadow rounded-lg">
+            <!-- Log Weight -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Log Weight</h3>
-                    <form hx-post="/api/weight"
-                          hx-ext="json-enc"
-                          hx-target="#weight-message"
-                          hx-swap="innerHTML"
-                          @htmx:after-request="
-                            if ($event.detail.successful) {
-                              $event.target.reset();
-                              document.getElementById('weight-date').value = new Date().toISOString();
-                              $refs.weightMsg.className = 'mt-2 text-sm text-green-600';
-                              $refs.weightMsg.textContent = 'Weight logged successfully!';
-                              setTimeout(() => { $refs.weightMsg.textContent = ''; }, 3000);
-                              htmx.trigger('#recent-activity', 'refresh-activity');
-                            } else {
-                              $refs.weightMsg.className = 'mt-2 text-sm text-red-600';
-                              $refs.weightMsg.textContent = 'Error logging weight. Please try again.';
-                            }
-                          "
-                          x-data>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Log Weight</h3>
+                    <form hx-post="/api/weight" hx-ext="json-enc" hx-target="#weight-message" hx-swap="innerHTML"
+                          @htmx:after-request="if ($event.detail.successful) { $event.target.reset(); document.getElementById('weight-date').value = new Date().toISOString(); $refs.weightMsg.className='mt-2 text-sm text-green-600'; $refs.weightMsg.textContent='Logged!'; setTimeout(()=>{$refs.weightMsg.textContent=''},3000); htmx.trigger('#recent-activity','refresh-activity'); loadWeightChart(); } else { $refs.weightMsg.className='mt-2 text-sm text-red-600'; $refs.weightMsg.textContent='Error'; }" x-data>
                         <div class="mb-4">
-                            <label for="weight" class="block text-sm font-medium text-gray-700">Weight (lbs)</label>
+                            <label for="weight" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Weight (lbs)</label>
                             <input type="number" name="weight_lbs" id="weight" step="0.1" required
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                   class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border px-3 py-2">
                         </div>
                         <input type="hidden" name="date" id="weight-date">
-                        <button type="submit"
-                                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                            Log Weight
-                        </button>
+                        <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 touch-target">Log Weight</button>
                         <div id="weight-message" class="mt-2 text-sm" x-ref="weightMsg"></div>
                     </form>
                 </div>
             </div>
 
-            <!-- Quick Log Meal Card -->
-            <div class="bg-white overflow-hidden shadow rounded-lg">
+            <!-- Log Meal -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Log Meal</h3>
-                    <form hx-post="/api/meals"
-                          hx-ext="json-enc"
-                          hx-target="#meal-message"
-                          hx-swap="innerHTML"
-                          @htmx:after-request="
-                            if ($event.detail.successful) {
-                              $event.target.reset();
-                              document.getElementById('meal-date').value = new Date().toISOString();
-                              $refs.mealMsg.className = 'mt-2 text-sm text-green-600';
-                              $refs.mealMsg.textContent = 'Meal logged successfully!';
-                              setTimeout(() => { $refs.mealMsg.textContent = ''; }, 3000);
-                              htmx.trigger('#recent-activity', 'refresh-activity');
-                            } else {
-                              $refs.mealMsg.className = 'mt-2 text-sm text-red-600';
-                              $refs.mealMsg.textContent = 'Error logging meal. Please try again.';
-                            }
-                          "
-                          x-data>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Log Meal</h3>
+                    <form hx-post="/api/meals" hx-ext="json-enc" hx-target="#meal-message" hx-swap="innerHTML"
+                          @htmx:after-request="if ($event.detail.successful) { $event.target.reset(); document.getElementById('meal-date').value = new Date().toISOString(); $refs.mealMsg.className='mt-2 text-sm text-green-600'; $refs.mealMsg.textContent='Logged!'; setTimeout(()=>{$refs.mealMsg.textContent=''},3000); htmx.trigger('#recent-activity','refresh-activity'); } else { $refs.mealMsg.className='mt-2 text-sm text-red-600'; $refs.mealMsg.textContent='Error'; }" x-data>
                         <div class="mb-2">
-                            <label for="meal-type" class="block text-sm font-medium text-gray-700">Meal Type</label>
-                            <select name="meal_type" id="meal-type"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <option>breakfast</option>
-                                <option>lunch</option>
-                                <option>dinner</option>
-                                <option>snack</option>
+                            <select name="meal_type" class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
+                                <option>breakfast</option><option>lunch</option><option>dinner</option><option>snack</option>
                             </select>
                         </div>
                         <div class="mb-2">
-                            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-                            <input type="text" name="description" id="description"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <input type="text" name="description" placeholder="What did you eat?"
+                                   class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
                         </div>
                         <input type="hidden" name="date" id="meal-date">
-                        <button type="submit"
-                                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                            Log Meal
-                        </button>
+                        <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 touch-target">Log Meal</button>
                         <div id="meal-message" class="mt-2 text-sm" x-ref="mealMsg"></div>
                     </form>
                 </div>
             </div>
 
-            <!-- Quick Log Workout Card -->
-            <div class="bg-white overflow-hidden shadow rounded-lg">
+            <!-- Quick Log Workout -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Log Workout</h3>
-                    <form hx-post="/api/workouts"
-                          hx-ext="json-enc"
-                          hx-target="#workout-message"
-                          hx-swap="innerHTML"
-                          @htmx:after-request="
-                            if ($event.detail.successful) {
-                              $event.target.reset();
-                              document.getElementById('workout-date').value = new Date().toISOString();
-                              $refs.workoutMsg.className = 'mt-2 text-sm text-green-600';
-                              $refs.workoutMsg.textContent = 'Workout logged successfully!';
-                              setTimeout(() => { $refs.workoutMsg.textContent = ''; }, 3000);
-                              htmx.trigger('#recent-activity', 'refresh-activity');
-                            } else {
-                              $refs.workoutMsg.className = 'mt-2 text-sm text-red-600';
-                              $refs.workoutMsg.textContent = 'Error logging workout. Please try again.';
-                            }
-                          "
-                          x-data>
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Quick Workout</h3>
+                    <form hx-post="/api/workouts" hx-ext="json-enc" hx-target="#workout-message" hx-swap="innerHTML"
+                          @htmx:after-request="if ($event.detail.successful) { $event.target.reset(); document.getElementById('workout-date').value = new Date().toISOString(); $refs.workoutMsg.className='mt-2 text-sm text-green-600'; $refs.workoutMsg.textContent='Logged!'; setTimeout(()=>{$refs.workoutMsg.textContent=''},3000); htmx.trigger('#recent-activity','refresh-activity'); loadWorkoutChart(); } else { $refs.workoutMsg.className='mt-2 text-sm text-red-600'; $refs.workoutMsg.textContent='Error'; }" x-data>
                         <div class="mb-2">
-                            <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-                            <input type="number" name="duration_minutes" id="duration"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <input type="number" name="duration_minutes" placeholder="Duration (min)"
+                                   class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
                         </div>
                         <div class="mb-2">
-                            <label for="rpe" class="block text-sm font-medium text-gray-700">RPE (1-10)</label>
-                            <input type="number" name="overall_rpe" id="rpe" min="1" max="10"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <input type="number" name="overall_rpe" placeholder="RPE (1-10)" min="1" max="10"
+                                   class="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm text-sm border px-3 py-2">
                         </div>
                         <input type="hidden" name="completed_date" id="workout-date">
-                        <button type="submit"
-                                class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                            Log Workout
-                        </button>
+                        <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 touch-target">Log Workout</button>
                         <div id="workout-message" class="mt-2 text-sm" x-ref="workoutMsg"></div>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- Progress Charts -->
+        <!-- Weekly Targets (Radar) + Muscle Recovery -->
         <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div class="bg-white overflow-hidden shadow rounded-lg p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Weight Trend</h3>
-                <div class="relative" style="height: 280px;">
+            <!-- Weekly Targets -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Weekly Targets</h3>
+                    <a href="/preferences" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Edit targets</a>
+                </div>
+                <div class="relative" style="height: 250px;">
+                    <canvas id="weekly-radar"></canvas>
+                </div>
+                <div id="weekly-bars" class="space-y-2 mt-4"></div>
+            </div>
+
+            <!-- Muscle Recovery -->
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Muscle Recovery</h3>
+                <div id="recovery-status">
+                    <p class="text-sm text-gray-400">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strength Scores -->
+        <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Strength Scores</h3>
+            <div id="strength-scores">
+                <p class="text-sm text-gray-400">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Weight Trend</h3>
+                <div class="relative" style="height: 250px;">
                     <canvas id="weight-chart"></canvas>
                 </div>
-                <p id="weight-chart-empty" class="hidden text-sm text-gray-400 text-center py-12">
-                    No weight data yet. Log your first weigh-in above.
-                </p>
+                <p id="weight-chart-empty" class="hidden text-sm text-gray-400 text-center py-8">No weight data yet.</p>
             </div>
-            <div class="bg-white overflow-hidden shadow rounded-lg p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Workout Activity</h3>
-                <div class="relative" style="height: 280px;">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Workout Activity</h3>
+                <div class="relative" style="height: 250px;">
                     <canvas id="workout-chart"></canvas>
                 </div>
-                <p id="workout-chart-empty" class="hidden text-sm text-gray-400 text-center py-12">
-                    No workout data yet. Log your first session above.
-                </p>
+                <p id="workout-chart-empty" class="hidden text-sm text-gray-400 text-center py-8">No workout data yet.</p>
             </div>
         </div>
 
         <!-- Recent Activity -->
         <div class="mt-8">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
-            <div class="bg-white shadow overflow-hidden sm:rounded-md"
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
+            <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md"
                  id="recent-activity"
                  hx-get="/api/recent-activity"
                  hx-trigger="load, refresh-activity from:body"
                  hx-swap="innerHTML">
-                <div class="px-4 py-4 sm:px-6">
-                    <p class="text-sm text-gray-500">Loading...</p>
-                </div>
+                <div class="px-4 py-4 sm:px-6"><p class="text-sm text-gray-500">Loading...</p></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Set current date for forms
-    const now = new Date().toISOString();
-    document.getElementById('weight-date').value = now;
-    document.getElementById('meal-date').value = now;
-    document.getElementById('workout-date').value = now;
+const now = new Date().toISOString();
+document.getElementById('weight-date').value = now;
+document.getElementById('meal-date').value = now;
+document.getElementById('workout-date').value = now;
 
-    // Handle HTMX responses to show success/error messages
-    document.body.addEventListener('htmx:afterRequest', function(event) {
-        const form = event.target;
-        if (!form.tagName || form.tagName !== 'FORM') return;
+const chartColors = {
+    indigo: 'rgb(79, 70, 229)', indigoLight: 'rgba(79, 70, 229, 0.1)',
+    amber: 'rgb(245, 158, 11)', amberLight: 'rgba(245, 158, 11, 0.3)',
+    green: 'rgb(16, 185, 129)', red: 'rgb(239, 68, 68)',
+};
+const sharedOpts = { grid: {color:'rgba(0,0,0,0.04)'}, ticks: {font:{size:11}, color:'#6b7280'} };
 
-        const messageTarget = form.querySelector('[id$="-message"]');
-        if (!messageTarget) return;
+// --- Weight Chart ---
+let weightChart = null;
+async function loadWeightChart() {
+    try {
+        const resp = await fetch('/api/weight', {credentials:'include'});
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const pts = data.filter(d=>d.weight_lbs).map(d=>({x:new Date(d.date),y:d.weight_lbs})).sort((a,b)=>a.x-b.x);
+        const c = document.getElementById('weight-chart'), e = document.getElementById('weight-chart-empty');
+        if (!pts.length) { c.style.display='none'; e.classList.remove('hidden'); return; }
+        c.style.display=''; e.classList.add('hidden');
+        if (weightChart) weightChart.destroy();
+        weightChart = new Chart(c, {type:'line', data:{datasets:[{label:'Weight',data:pts,borderColor:chartColors.indigo,backgroundColor:chartColors.indigoLight,fill:true,tension:.3,pointRadius:4}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{type:'time',time:{unit:'day'},...sharedOpts},y:{title:{display:true,text:'lbs'},...sharedOpts}}}});
+    } catch(e){}
+}
 
-        if (event.detail.successful) {
-            messageTarget.className = 'mt-2 text-sm text-green-600';
-            messageTarget.textContent = '✓ Logged successfully!';
-            form.reset();
-            // Reset date fields after form reset
-            setTimeout(() => {
-                const now = new Date().toISOString();
-                const dateInput = form.querySelector('input[type="hidden"][name*="date"]');
-                if (dateInput) dateInput.value = now;
-            }, 0);
-        } else {
-            messageTarget.className = 'mt-2 text-sm text-red-600';
-            const status = event.detail.xhr.status;
-            const errorMsg = status === 401 ? 'Not authorized. Please login again.' :
-                           status === 422 ? 'Invalid data. Please check your inputs.' :
-                           'Error: ' + status;
-            messageTarget.textContent = '✗ ' + errorMsg;
+// --- Workout Chart ---
+let workoutChart = null;
+async function loadWorkoutChart() {
+    try {
+        const resp = await fetch('/api/workouts', {credentials:'include'});
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const items = data.filter(d=>d.duration_minutes).map(d=>({x:new Date(d.completed_date||d.created_at),dur:d.duration_minutes,rpe:d.overall_rpe})).sort((a,b)=>a.x-b.x);
+        const c = document.getElementById('workout-chart'), e = document.getElementById('workout-chart-empty');
+        if (!items.length) { c.style.display='none'; e.classList.remove('hidden'); return; }
+        c.style.display=''; e.classList.add('hidden');
+        if (workoutChart) workoutChart.destroy();
+        workoutChart = new Chart(c, {type:'bar', data:{labels:items.map(d=>d.x), datasets:[{label:'Duration (min)',data:items.map(d=>d.dur),backgroundColor:chartColors.indigoLight,borderColor:chartColors.indigo,borderWidth:1,yAxisID:'y'},{label:'RPE',data:items.map(d=>d.rpe),type:'line',borderColor:chartColors.amber,pointRadius:4,tension:.3,yAxisID:'y1'}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{x:{type:'time',time:{unit:'day'},...sharedOpts},y:{position:'left',title:{display:true,text:'Minutes'},...sharedOpts},y1:{position:'right',min:1,max:10,title:{display:true,text:'RPE'},grid:{drawOnChartArea:false},ticks:{stepSize:1,font:{size:11}}}}}});
+    } catch(e){}
+}
+
+// --- Weekly Targets Radar ---
+let radarChart = null;
+async function loadWeeklyTargets() {
+    try {
+        const resp = await fetch('/api/analytics/weekly', {credentials:'include'});
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!data.length) return;
+        const c = document.getElementById('weekly-radar');
+        if (radarChart) radarChart.destroy();
+        radarChart = new Chart(c, {type:'radar', data:{labels:data.map(d=>d.label), datasets:[{label:'Target',data:data.map(d=>d.target),borderColor:'rgba(156,163,175,0.5)',backgroundColor:'rgba(156,163,175,0.1)',pointRadius:2},{label:'Actual',data:data.map(d=>d.actual),borderColor:chartColors.indigo,backgroundColor:chartColors.indigoLight,pointRadius:3}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},scales:{r:{beginAtZero:true,ticks:{font:{size:10}}}}}});
+        // Progress bars
+        let html = '';
+        data.forEach(d => {
+            const color = d.pct >= 100 ? 'bg-green-500' : d.pct >= 50 ? 'bg-indigo-500' : 'bg-amber-500';
+            html += `<div><div class="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1"><span>${d.label}</span><span>${d.actual}/${d.target} (${d.pct}%)</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="${color} rounded-full h-2" style="width:${Math.min(100,d.pct)}%"></div></div></div>`;
+        });
+        document.getElementById('weekly-bars').innerHTML = html;
+    } catch(e){}
+}
+
+// --- Recovery Status ---
+async function loadRecovery() {
+    try {
+        const resp = await fetch('/api/analytics/recovery', {credentials:'include'});
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const el = document.getElementById('recovery-status');
+        if (!data.length) { el.innerHTML = '<p class="text-sm text-gray-400">No recent training data. Log workouts with exercises to see recovery.</p>'; return; }
+        let html = '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">';
+        data.forEach(m => {
+            const colors = {fresh:'border-green-400 bg-green-50 dark:bg-green-900/20', ready:'border-blue-400 bg-blue-50 dark:bg-blue-900/20', recovering:'border-amber-400 bg-amber-50 dark:bg-amber-900/20'};
+            const labels = {fresh:'Fresh', ready:'Ready', recovering:'Recovering'};
+            html += `<div class="border-l-4 ${colors[m.status]||''} rounded p-2"><p class="text-sm font-medium text-gray-900 dark:text-white capitalize">${m.muscle}</p><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1"><div class="bg-green-500 rounded-full h-1.5" style="width:${m.recovery_pct}%"></div></div><p class="text-xs text-gray-500 mt-1">${labels[m.status]} (${m.recovery_pct}%)</p></div>`;
+        });
+        html += '</div>';
+        el.innerHTML = html;
+    } catch(e){}
+}
+
+// --- Strength Scores ---
+async function loadStrength() {
+    try {
+        const [strengthResp, prResp] = await Promise.all([
+            fetch('/api/analytics/strength', {credentials:'include'}),
+            fetch('/api/analytics/prs?days=30', {credentials:'include'}),
+        ]);
+        if (!strengthResp.ok) return;
+        const data = await strengthResp.json();
+        const prExerciseIds = new Set();
+        if (prResp.ok) {
+            const prs = await prResp.json();
+            prs.forEach(pr => prExerciseIds.add(pr.exercise_id));
         }
-    });
+        const el = document.getElementById('strength-scores');
+        if (!data.length) { el.innerHTML = '<p class="text-sm text-gray-400">No exercise data yet. Log workouts with weights to see strength scores.</p>'; return; }
+        const levelColors = {beginner:'text-gray-600 bg-gray-100 dark:bg-gray-700', intermediate:'text-blue-600 bg-blue-100 dark:bg-blue-900/30', advanced:'text-purple-600 bg-purple-100 dark:bg-purple-900/30', elite:'text-amber-600 bg-amber-100 dark:bg-amber-900/30', unknown:'text-gray-500 bg-gray-100 dark:bg-gray-700'};
+        let html = '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">';
+        data.slice(0, 8).forEach(s => {
+            const prBadge = prExerciseIds.has(s.exercise_id) ? '<span class="ml-1 text-xs bg-amber-500 text-white px-1.5 py-0.5 rounded font-bold">PR</span>' : '';
+            html += `<div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3"><div><p class="text-sm font-medium text-gray-900 dark:text-white">${s.exercise_name}${prBadge}</p><p class="text-xs text-gray-500">Best: ${s.best_weight}lbs x ${s.best_reps} reps</p></div><div class="text-right"><p class="text-lg font-bold text-indigo-600">${s.estimated_1rm} lbs</p><span class="text-xs px-2 py-0.5 rounded ${levelColors[s.level]||''}">${s.level}</span></div></div>`;
+        });
+        html += '</div>';
+        el.innerHTML = html;
+    } catch(e){}
+}
 
-    // --- Progress Charts ---
-    const chartColors = {
-        indigo: 'rgb(79, 70, 229)',
-        indigoLight: 'rgba(79, 70, 229, 0.1)',
-        amber: 'rgb(245, 158, 11)',
-        amberLight: 'rgba(245, 158, 11, 0.3)',
-    };
+// Load everything
+loadWeightChart(); loadWorkoutChart(); loadWeeklyTargets(); loadRecovery(); loadStrength();
 
-    const sharedScaleOpts = {
-        grid: { color: 'rgba(0,0,0,0.04)' },
-        ticks: { font: { size: 11 }, color: '#6b7280' },
-    };
-
-    let weightChart = null;
-    let workoutChart = null;
-
-    async function loadWeightChart() {
-        try {
-            const resp = await fetch('/api/weight', { credentials: 'include' });
-            if (!resp.ok) return;
-            const data = await resp.json();
-            const points = data
-                .filter(d => d.weight_lbs != null)
-                .map(d => ({ x: new Date(d.date), y: d.weight_lbs }))
-                .sort((a, b) => a.x - b.x);
-
-            const canvas = document.getElementById('weight-chart');
-            const empty = document.getElementById('weight-chart-empty');
-            if (points.length === 0) {
-                canvas.style.display = 'none';
-                empty.classList.remove('hidden');
-                return;
-            }
-
-            if (weightChart) weightChart.destroy();
-            weightChart = new Chart(canvas, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Weight (lbs)',
-                        data: points,
-                        borderColor: chartColors.indigo,
-                        backgroundColor: chartColors.indigoLight,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => `${ctx.parsed.y.toFixed(1)} lbs`
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: { unit: 'day', tooltipFormat: 'MMM d, yyyy' },
-                            ...sharedScaleOpts,
-                        },
-                        y: {
-                            title: { display: true, text: 'lbs', font: { size: 11 } },
-                            ...sharedScaleOpts,
-                        }
-                    }
-                }
-            });
-        } catch (e) { /* auth redirect or network error — fail silently */ }
-    }
-
-    async function loadWorkoutChart() {
-        try {
-            const resp = await fetch('/api/workouts', { credentials: 'include' });
-            if (!resp.ok) return;
-            const data = await resp.json();
-            const items = data
-                .filter(d => d.duration_minutes != null)
-                .map(d => ({
-                    x: new Date(d.completed_date || d.created_at),
-                    duration: d.duration_minutes,
-                    rpe: d.overall_rpe,
-                }))
-                .sort((a, b) => a.x - b.x);
-
-            const canvas = document.getElementById('workout-chart');
-            const empty = document.getElementById('workout-chart-empty');
-            if (items.length === 0) {
-                canvas.style.display = 'none';
-                empty.classList.remove('hidden');
-                return;
-            }
-
-            if (workoutChart) workoutChart.destroy();
-            workoutChart = new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: items.map(d => d.x),
-                    datasets: [
-                        {
-                            label: 'Duration (min)',
-                            data: items.map(d => d.duration),
-                            backgroundColor: chartColors.indigoLight,
-                            borderColor: chartColors.indigo,
-                            borderWidth: 1,
-                            yAxisID: 'y',
-                        },
-                        {
-                            label: 'RPE',
-                            data: items.map(d => d.rpe),
-                            type: 'line',
-                            borderColor: chartColors.amber,
-                            backgroundColor: chartColors.amberLight,
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            tension: 0.3,
-                            yAxisID: 'y1',
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                    },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: { unit: 'day', tooltipFormat: 'MMM d, yyyy' },
-                            ...sharedScaleOpts,
-                        },
-                        y: {
-                            position: 'left',
-                            title: { display: true, text: 'Minutes', font: { size: 11 } },
-                            ...sharedScaleOpts,
-                        },
-                        y1: {
-                            position: 'right',
-                            min: 1,
-                            max: 10,
-                            title: { display: true, text: 'RPE', font: { size: 11 } },
-                            grid: { drawOnChartArea: false },
-                            ticks: { stepSize: 1, font: { size: 11 }, color: '#6b7280' },
-                        }
-                    }
-                }
-            });
-        } catch (e) { /* fail silently */ }
-    }
-
-    // Load charts on page load and refresh after logging
-    loadWeightChart();
-    loadWorkoutChart();
-
-    document.body.addEventListener('htmx:afterSettle', function(event) {
-        if (event.target.id === 'recent-activity') {
-            loadWeightChart();
-            loadWorkoutChart();
-        }
-    });
+document.body.addEventListener('htmx:afterSettle', function(e) {
+    if (e.target.id === 'recent-activity') { loadWeightChart(); loadWorkoutChart(); }
+});
 </script>
 {% endblock %}

@@ -1,65 +1,145 @@
 {% extends "base.html" %}
-
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
-        <h1 class="text-3xl font-bold text-gray-900 mb-8">Workouts</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Workouts</h1>
 
         <!-- Log Workout Section -->
-        <div class="bg-white overflow-hidden shadow rounded-lg mb-8">
-            <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Log Workout</h3>
-                <form hx-post="/api/workouts"
-                      hx-ext="json-enc"
-                      hx-target="#workout-message"
-                      hx-swap="innerHTML"
-                      @htmx:after-request="
-                        if ($event.detail.successful) {
-                          $event.target.reset();
-                          document.getElementById('workout-date').value = new Date().toISOString();
-                          $refs.workoutMsg.className = 'mt-2 text-sm text-green-600';
-                          $refs.workoutMsg.textContent = 'Workout logged successfully!';
-                          setTimeout(() => { $refs.workoutMsg.textContent = ''; }, 3000);
-                          htmx.trigger('#workout-history', 'refresh-history');
-                        } else {
-                          $refs.workoutMsg.className = 'mt-2 text-sm text-red-600';
-                          $refs.workoutMsg.textContent = 'Error logging workout. Please try again.';
-                        }
-                      "
-                      x-data>
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
-                            <input type="number" name="duration_minutes" id="duration"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:p-6" x-data="workoutForm()">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Log Workout</h3>
+
+                <!-- Session Info -->
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Duration (min)</label>
+                        <input type="number" x-model.number="duration_minutes"
+                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">RPE (1-10)</label>
+                        <input type="number" x-model.number="overall_rpe" min="1" max="10"
+                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+                        <input type="text" x-model="notes"
+                               class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border px-3 py-2">
+                    </div>
+                </div>
+
+                <!-- Exercise Logs -->
+                <div class="border-t dark:border-gray-700 pt-4 mb-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Exercises</h4>
+                        <button @click="addExercise()" type="button"
+                                class="text-sm bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800">
+                            + Add Exercise
+                        </button>
+                    </div>
+
+                    <template x-for="(ex, ei) in exercise_logs" :key="ei">
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-3">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="flex-1 relative">
+                                    <input type="text" :placeholder="'Search exercise...'"
+                                           x-model="ex.search"
+                                           @input.debounce.200ms="searchExercises(ei)"
+                                           @focus="ex.showDropdown = true"
+                                           class="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white text-sm px-3 py-1.5 border">
+                                    <div x-show="ex.showDropdown && ex.results.length > 0"
+                                         @click.outside="ex.showDropdown = false"
+                                         class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border dark:border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto">
+                                        <template x-for="result in ex.results" :key="result.id">
+                                            <button @click="selectExercise(ei, result)" type="button"
+                                                    class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-white">
+                                                <span x-text="result.name"></span>
+                                                <span class="text-xs text-gray-400 ml-1" x-text="result.equipment || ''"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                <button @click="exercise_logs.splice(ei, 1)" type="button"
+                                        class="text-red-400 hover:text-red-600 text-sm px-2">X</button>
+                            </div>
+
+                            <!-- Sets -->
+                            <template x-for="(set, si) in ex.sets" :key="si">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs text-gray-400 w-6" x-text="'#' + (si+1)"></span>
+                                    <input type="number" placeholder="lbs" x-model.number="set.weight" step="2.5"
+                                           class="w-20 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white text-sm px-2 py-1 border text-center">
+                                    <span class="text-xs text-gray-400">x</span>
+                                    <input type="number" placeholder="reps" x-model.number="set.reps"
+                                           @change="if(set.reps && set.weight) startRest(90)"
+                                           class="w-16 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white text-sm px-2 py-1 border text-center">
+                                    <span class="text-xs text-gray-400">@RPE</span>
+                                    <input type="number" placeholder="-" x-model.number="set.rpe" min="1" max="10"
+                                           class="w-14 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white text-sm px-2 py-1 border text-center">
+                                    <button @click="ex.sets.splice(si, 1)" type="button"
+                                            class="text-red-300 hover:text-red-500 text-xs">x</button>
+                                </div>
+                            </template>
+                            <button @click="ex.sets.push({weight: null, reps: null, rpe: null})" type="button"
+                                    class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 mt-1">+ Add Set</button>
                         </div>
-                        <div>
-                            <label for="rpe" class="block text-sm font-medium text-gray-700">RPE (1-10)</label>
-                            <input type="number" name="overall_rpe" id="rpe" min="1" max="10"
-                                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </template>
+                </div>
+
+                <!-- Timer / Rest Bar -->
+                <div class="border-t dark:border-gray-700 pt-4 mb-4">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="text-2xl font-mono font-bold" :class="timer.mode === 'rest' && timer.seconds <= 5 ? 'text-red-500' : 'text-gray-900 dark:text-white'" x-text="formatTime(timer.seconds)"></span>
+                        <span x-show="timer.mode === 'rest'" class="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase">Rest</span>
+                        <span x-show="timer.mode === 'stopwatch'" class="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase">Stopwatch</span>
+
+                        <div class="flex gap-1">
+                            <button @click="startTimer()" x-show="!timer.running" type="button"
+                                    class="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded hover:bg-green-200 dark:hover:bg-green-800">Start</button>
+                            <button @click="pauseTimer()" x-show="timer.running" type="button"
+                                    class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-2 py-1 rounded hover:bg-amber-200 dark:hover:bg-amber-800">Pause</button>
+                            <button @click="resetTimer()" type="button"
+                                    class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600">Reset</button>
+                        </div>
+
+                        <div class="flex gap-1 ml-auto">
+                            <span class="text-xs text-gray-500 dark:text-gray-400 self-center mr-1">Rest:</span>
+                            <button @click="startRest(60)" type="button" class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800">1:00</button>
+                            <button @click="startRest(90)" type="button" class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800">1:30</button>
+                            <button @click="startRest(120)" type="button" class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800">2:00</button>
+                            <button @click="startRest(180)" type="button" class="text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded hover:bg-indigo-200 dark:hover:bg-indigo-800">3:00</button>
                         </div>
                     </div>
-                    <div class="mt-4">
-                        <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
-                        <textarea name="notes" id="notes" rows="3"
-                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                    <!-- Progress bar for rest countdown -->
+                    <div x-show="timer.mode === 'rest' && timer.restTotal > 0" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
+                        <div class="bg-indigo-500 rounded-full h-1.5 transition-all duration-1000" :style="'width:' + (timer.seconds / timer.restTotal * 100) + '%'"></div>
                     </div>
-                    <input type="hidden" name="completed_date" id="workout-date">
-                    <button type="submit"
-                            class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
-                        Log Workout
-                    </button>
-                    <div id="workout-message" class="mt-2 text-sm" x-ref="workoutMsg"></div>
-                </form>
+                </div>
+
+                <button @click="submitWorkout()" type="button"
+                        :disabled="submitting"
+                        class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50 touch-target">
+                    <span x-text="submitting ? 'Saving...' : 'Log Workout'"></span>
+                </button>
+                <p x-show="message" :class="messageClass" class="mt-2 text-sm" x-text="message"></p>
             </div>
         </div>
 
+        <!-- Volume Chart -->
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg mb-8 p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Training Volume</h3>
+            <div class="relative" style="height: 250px;">
+                <canvas id="volume-chart"></canvas>
+            </div>
+            <p id="volume-chart-empty" class="hidden text-sm text-gray-400 text-center py-8">No volume data yet. Log workouts with exercises to see trends.</p>
+        </div>
+
         <!-- Workout History -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
             <div class="px-4 py-5 sm:p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">Workout History</h2>
+                <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Workout History</h2>
                 <div id="workout-history"
                      hx-get="/api/workouts"
                      hx-trigger="load, refresh-history from:body"
@@ -72,8 +152,219 @@
 </div>
 
 <script>
-    // Set current date for form
-    const now = new Date().toISOString();
-    document.getElementById('workout-date').value = now;
+function workoutForm() {
+    return {
+        duration_minutes: null,
+        overall_rpe: null,
+        notes: '',
+        exercise_logs: [],
+        submitting: false,
+        message: '',
+        messageClass: '',
+
+        // Timer state
+        timer: { seconds: 0, running: false, interval: null, mode: 'stopwatch', restTotal: 0 },
+
+        formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = s % 60;
+            return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+        },
+
+        startTimer() {
+            if (this.timer.running) return;
+            this.timer.running = true;
+            this.timer.interval = setInterval(() => {
+                if (this.timer.mode === 'rest') {
+                    this.timer.seconds--;
+                    if (this.timer.seconds <= 0) {
+                        this.timer.seconds = 0;
+                        this.pauseTimer();
+                        this._timerBeep();
+                    }
+                } else {
+                    this.timer.seconds++;
+                }
+            }, 1000);
+        },
+
+        pauseTimer() {
+            this.timer.running = false;
+            if (this.timer.interval) { clearInterval(this.timer.interval); this.timer.interval = null; }
+        },
+
+        resetTimer() {
+            this.pauseTimer();
+            this.timer.seconds = 0;
+            this.timer.mode = 'stopwatch';
+            this.timer.restTotal = 0;
+        },
+
+        startRest(seconds) {
+            this.pauseTimer();
+            this.timer.mode = 'rest';
+            this.timer.seconds = seconds;
+            this.timer.restTotal = seconds;
+            this.startTimer();
+        },
+
+        _timerBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                for (let i = 0; i < 3; i++) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.value = 880;
+                    gain.gain.value = 0.3;
+                    osc.start(ctx.currentTime + i * 0.2);
+                    osc.stop(ctx.currentTime + i * 0.2 + 0.1);
+                }
+            } catch(e) {}
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        },
+
+        _showPRToast(pr) {
+            const toast = document.createElement('div');
+            const pct = pr.improvement_pct ? ` (+${pr.improvement_pct}%)` : ' (first!)';
+            toast.innerHTML = `<strong>PR!</strong> ${pr.exercise_name}: ${pr.estimated_1rm} lbs est. 1RM${pct}`;
+            toast.className = 'fixed top-4 right-4 z-50 bg-amber-500 text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-500';
+            document.body.appendChild(toast);
+            this._timerBeep();
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
+        },
+
+        addExercise() {
+            this.exercise_logs.push({
+                exercise_id: null,
+                exercise_name: '',
+                search: '',
+                results: [],
+                showDropdown: false,
+                sets: [{weight: null, reps: null, rpe: null}],
+            });
+        },
+
+        async searchExercises(idx) {
+            const ex = this.exercise_logs[idx];
+            if (ex.search.length < 2) { ex.results = []; return; }
+            try {
+                const resp = await fetch(`/api/exercises?q=${encodeURIComponent(ex.search)}&per_page=8`, {credentials: 'include'});
+                if (resp.ok) {
+                    const data = await resp.json();
+                    ex.results = data.exercises || [];
+                    ex.showDropdown = true;
+                }
+            } catch(e) {}
+        },
+
+        selectExercise(idx, result) {
+            const ex = this.exercise_logs[idx];
+            ex.exercise_id = result.id;
+            ex.exercise_name = result.name;
+            ex.search = result.name;
+            ex.showDropdown = false;
+            ex.results = [];
+        },
+
+        async submitWorkout() {
+            this.submitting = true;
+            this.message = '';
+
+            const payload = {
+                completed_date: new Date().toISOString(),
+                duration_minutes: this.duration_minutes || null,
+                overall_rpe: this.overall_rpe || null,
+                notes: this.notes || null,
+                exercise_logs: this.exercise_logs
+                    .filter(ex => ex.exercise_id)
+                    .map(ex => ({
+                        exercise_id: ex.exercise_id,
+                        sets_data: ex.sets.filter(s => s.weight || s.reps),
+                    })),
+            };
+
+            try {
+                const resp = await fetch('/api/workouts', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                });
+                if (resp.ok) {
+                    const result = await resp.json();
+                    this.message = 'Workout logged!';
+                    this.messageClass = 'text-green-600';
+                    this.resetTimer();
+                    // Check for PRs
+                    if (result.id) {
+                        try {
+                            const prResp = await fetch(`/api/analytics/prs/session/${result.id}`, {credentials: 'include'});
+                            if (prResp.ok) {
+                                const prs = await prResp.json();
+                                prs.forEach((pr, i) => {
+                                    setTimeout(() => this._showPRToast(pr), i * 800);
+                                });
+                            }
+                        } catch(e) {}
+                    }
+                    this.duration_minutes = null;
+                    this.overall_rpe = null;
+                    this.notes = '';
+                    this.exercise_logs = [];
+                    htmx.trigger('#workout-history', 'refresh-history');
+                    loadVolumeChart();
+                    setTimeout(() => { this.message = ''; }, 3000);
+                } else {
+                    this.message = 'Error logging workout.';
+                    this.messageClass = 'text-red-600';
+                }
+            } catch(e) {
+                this.message = 'Network error.';
+                this.messageClass = 'text-red-600';
+            }
+            this.submitting = false;
+        },
+    };
+}
+
+// Volume chart
+let volumeChart = null;
+async function loadVolumeChart() {
+    try {
+        const resp = await fetch('/api/analytics/volume?days=90', {credentials: 'include'});
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const canvas = document.getElementById('volume-chart');
+        const empty = document.getElementById('volume-chart-empty');
+        if (!data.length) { canvas.style.display = 'none'; empty.classList.remove('hidden'); return; }
+        canvas.style.display = '';
+        empty.classList.add('hidden');
+        if (volumeChart) volumeChart.destroy();
+        volumeChart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d.date),
+                datasets: [{
+                    label: 'Volume (lbs)',
+                    data: data.map(d => d.total_weight),
+                    backgroundColor: 'rgba(79, 70, 229, 0.3)',
+                    borderColor: 'rgb(79, 70, 229)',
+                    borderWidth: 1,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { type: 'time', time: { unit: 'day' }, grid: { color: 'rgba(0,0,0,0.04)' } },
+                    y: { title: { display: true, text: 'Volume (lbs)' }, grid: { color: 'rgba(0,0,0,0.04)' } }
+                }
+            }
+        });
+    } catch(e) {}
+}
+loadVolumeChart();
 </script>
 {% endblock %}

@@ -701,7 +701,7 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
 
 ---
 
-## **CURRENT STATUS UPDATE** (2026-03-02)
+## **CURRENT STATUS UPDATE** (2026-03-04)
 
 ### **Phase 1 Progress: ~95% Complete**
 
@@ -710,13 +710,13 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
 - FastAPI app structure with async SQLAlchemy
 - SQLModel models (User, WorkoutSession, MealLog, WeightLog, ExerciseLog, AIAnalysisCache)
 - FastAPI-Users authentication (JWT + cookie dual backend)
-- UI templates (6 pages: index, login, register, dashboard, workouts, nutrition)
+- UI templates (10 pages: index, login, register, dashboard, workouts, nutrition, exercises, exercise detail, preferences, calendar)
 - API endpoints for weight/meal/workout logging (POST/GET)
 - PydanticAI agents (Planning, Nutrition, Analysis)
 - HTMX + Alpine.js + Tailwind frontend (cookie auth, working forms)
-- Alembic migrations configured with initial migration
+- Alembic migrations configured with initial migration + exercise library migration
 - Deployment configs (Dockerfile, fly.toml, docker-compose.yml)
-- Test suite: 19 tests passing (auth, data, AI with mocks)
+- Test suite: 90 tests passing (auth, data, AI with mocks, exercises, cache, NL parser, analytics, coaching, export)
 - Custom exception hierarchy and error handling
 - Rate limiting on AI endpoints (slowapi)
 - Input validation (Pydantic schemas with from_attributes)
@@ -746,7 +746,6 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
 - Background scheduling with APScheduler 3.x (weekly analysis job, Monday 6 AM UTC)
 - Cache invalidation on data writes (weight, meal, workout)
 - Rate limiting uses Redis when REDIS_ENABLED=true, falls back to memory
-- Test suite: 28 tests passing (19 existing + 5 cache + 4 NL parser)
 
 **⚠️ Remaining:**
 - Redis not yet provisioned in production (all cache code is no-op without it)
@@ -754,8 +753,64 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
 - OpenAI/Google API keys needed for extraction and long-context agents
 
 **📊 Metrics:**
-- Test suite: 28 tests, all passing
+- Test suite: 90 tests, all passing
 - AI: Multi-model strategy configured (Opus, Sonnet, Haiku, GPT-4o-mini, Gemini 2.5 Pro)
+
+### **Phase 3 Progress: ~95% Complete**
+
+**✅ Completed:**
+- Exercise library (800+ exercises from free-exercise-db)
+  - Restructured Exercise model with full fields (force, mechanic, equipment, muscles, instructions, images)
+  - UserExercisePreference model (favorite/exclude per user)
+  - Import script for seeding database from free-exercise-db JSON
+  - Browse/search/filter page with HTMX (name search, muscle/equipment/category/difficulty filters)
+  - Exercise detail page (images, instructions, muscles, metadata)
+  - User preference toggles (favorite, exclude)
+  - "Exercises" nav link added
+  - Alembic migration for schema changes
+- Per-exercise set logging within workouts (weight x reps @RPE per set, multiple exercises per workout)
+- Training preferences page (goal, split, days/week, session duration, volume target, cardio target)
+- Data visualizations:
+  - Weight trend chart (30 days, Chart.js line chart)
+  - Workout activity chart (30 days, Chart.js bar chart)
+  - Training volume over time (sets, reps, total weight)
+  - Macro adherence stacked bar chart (protein, carbs, fat — 30 days)
+  - Weekly targets radar chart (workouts, volume, duration vs targets)
+- Muscle recovery tracking (72h full recovery model, 48h ready threshold, per-muscle status)
+- Strength scores (Epley 1RM estimation, bodyweight-ratio strength levels)
+- Weekly targets progress (workouts, sets, active minutes vs user preferences)
+- Calendar view with workout badges (monthly grid, workout count, duration, exercise names per day)
+- Dark theme (Tailwind dark: classes, localStorage toggle, all templates updated)
+- Mobile optimization (bottom nav bar, touch targets 44px+, 16px mobile inputs, responsive layouts)
+- Analytics API with 10 endpoints (recovery, strength, weekly, calendar, macros, volume, preferences GET/PUT, PRs, session PRs)
+- Workout timer & rest period tracking (frontend-only Alpine.js component)
+  - Stopwatch and rest countdown modes
+  - Rest presets (1:00, 1:30, 2:00, 3:00)
+  - AudioContext beep + navigator.vibrate on rest expiry
+  - Auto-start rest on reps input change
+  - Progress bar for rest countdown
+- PR tracking & celebrations
+  - Epley 1RM-based PR detection across all sessions (GET /api/analytics/prs)
+  - Per-session PR check (GET /api/analytics/prs/session/{id})
+  - Toast notifications on workout submit when PRs detected
+  - PR badges on dashboard strength scores (last 30 days)
+- Conversational AI coaching
+  - PydanticAI coaching agent (uses coaching_model, Sonnet by default)
+  - POST /api/ai/coach endpoint with rate limiting (20/hour)
+  - Context injection: last 14 days workouts, 30 days weights, 7 days meals, profile
+  - Chat UI template (coach.html) with Alpine.js component
+  - "Coach" nav link in desktop and mobile nav
+- Data export (CSV, JSON)
+  - GET /api/export/json — structured JSON download with all data types
+  - GET /api/export/csv — sectioned CSV with weight, meal, workout data
+  - Configurable date range (1-365 days)
+  - Export UI in preferences page with time range dropdown
+- 90 tests (26 exercises + 27 analytics + 4 coaching + 5 export + 28 existing)
+
+**⚠️ Remaining:**
+- Video form guides (deferred)
+- Correlation heatmaps (deferred)
+- PWA / offline support (deferred)
 
 ---
 
@@ -774,7 +829,7 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
    - PostgreSQL schema implementation ✅
    - SQLModel models matching schema ✅
    - Alembic migrations setup ✅
-   - Seed data (exercise library) ❌ (deferred to Phase 3)
+   - Seed data (exercise library) ✅ (import script from free-exercise-db, 800+ exercises)
 
 3. **Authentication** ✅
    - FastAPI-Users integration ✅
@@ -843,7 +898,7 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
 4. **Enhanced AI features** ✅
    - Natural language workout parsing (POST /api/ai/parse-workout) ✅
    - Natural language meal parsing (POST /api/ai/parse-meal) ✅
-   - Conversational Q&A with context ❌ (deferred to Phase 3)
+   - Conversational Q&A with context ✅ (implemented in Phase 3 — POST /api/ai/coach, chat UI)
    - Progress summaries via analysis agent ✅
 
 5. **Observability** ✅
@@ -864,37 +919,42 @@ CREATE INDEX idx_workout_plans_data ON workout_plans USING GIN (plan_data);
 **Goal**: Delightful user experience
 
 **Tasks**:
-1. **Data visualization**
-   - Chart.js integration
-   - Weight trend graphs
-   - Performance progression charts
-   - Macro adherence visualizations
-   - Correlation heatmaps (AI-driven)
+1. **Data visualization** ✅
+   - Chart.js integration ✅
+   - Weight trend graphs ✅
+   - Performance progression charts ✅ (training volume over time)
+   - Macro adherence visualizations ✅ (stacked bar chart, 30 days)
+   - Weekly targets radar chart ✅
+   - Correlation heatmaps (AI-driven) ❌ (deferred)
 
-2. **Mobile optimization**
-   - Touch-friendly forms
-   - Responsive tables
-   - Offline data entry (PWA features)
-   - Quick-entry shortcuts
+2. **Mobile optimization** ✅
+   - Touch-friendly forms ✅ (44px touch targets, 16px mobile font)
+   - Responsive layouts ✅ (bottom nav, padding, grid adjustments)
+   - Offline data entry (PWA features) ❌ (deferred)
+   - Quick-entry shortcuts ❌ (deferred)
 
 3. **Enhanced features**
-   - Exercise library browser
-   - Video form guides
-   - Workout timer
-   - Rest period tracking
-   - PR tracking and celebrations
+   - Exercise library browser ✅ (800+ exercises, search/filter, detail pages, user preferences)
+   - Per-exercise set logging ✅ (weight x reps @RPE, multiple exercises per workout)
+   - Training preferences ✅ (goal, split, days/week, duration, volume, cardio targets)
+   - Muscle recovery tracking ✅ (72h model, per-muscle status)
+   - Strength scores ✅ (Epley 1RM, bodyweight-ratio levels)
+   - Calendar view ✅ (monthly grid, workout badges, exercise names)
+   - Video form guides ❌ (deferred)
+   - Workout timer ✅ (stopwatch + rest countdown, beep alerts, auto-start)
+   - Rest period tracking ✅ (presets 1:00/1:30/2:00/3:00, progress bar)
+   - PR tracking and celebrations ✅ (Epley 1RM detection, toast notifications, dashboard badges)
 
 4. **Personalization**
-   - Custom dashboard widgets
-   - Notification preferences
-   - Dark mode
-   - Export data (CSV, JSON)
+   - Dark mode ✅ (Tailwind dark: classes, localStorage toggle)
+   - Custom dashboard widgets ❌ (deferred)
+   - Notification preferences ❌ (deferred)
+   - Export data (CSV, JSON) ✅ (JSON + CSV download, configurable date range, UI in preferences)
 
 5. **Testing & refinement**
-   - User testing with both users
-   - Prompt optimization based on feedback
-   - Performance optimization
-   - Bug fixes
+   - 90 tests passing ✅ (26 exercises + 27 analytics + 4 coaching + 5 export + 28 existing)
+   - Prompt optimization based on feedback ❌ (deferred)
+   - Performance optimization ❌ (deferred)
 
 **Success Criteria**:
 - Mobile experience feels native
@@ -1402,11 +1462,19 @@ async def generate_plan(user_id: int):
    - Test `/api/ai/generate-nutrition-plan` with real API key
 
 ### Phase 2 complete. Phase 3 priorities:
-4. Chart.js visualizations (weight trend, macro adherence)
-5. Exercise library browser
-6. Conversational Q&A coaching
-7. Mobile optimization (touch forms, responsive tables)
-8. Workout timer and PR tracking
+4. ~~Chart.js visualizations~~ ✅ Done (weight trend, workout activity, volume, macros, radar)
+5. ~~Exercise library browser~~ ✅ Done
+6. ~~Per-exercise set logging~~ ✅ Done
+7. ~~Training preferences~~ ✅ Done
+8. ~~Muscle recovery tracking~~ ✅ Done
+9. ~~Strength scores~~ ✅ Done
+10. ~~Weekly targets~~ ✅ Done
+11. ~~Calendar view~~ ✅ Done
+12. ~~Dark theme~~ ✅ Done
+13. ~~Mobile optimization~~ ✅ Done
+14. ~~Conversational Q&A coaching~~ ✅ Done (POST /api/ai/coach, chat UI, context injection)
+15. ~~Workout timer and PR tracking~~ ✅ Done (timer, rest presets, PR detection, toast celebrations)
+16. ~~Data export~~ ✅ Done (JSON + CSV, preferences UI)
 
 ---
 
@@ -1414,7 +1482,7 @@ async def generate_plan(user_id: int):
 
 This plan balances rapid development with cutting-edge AI capabilities. By starting with a simple MVP and iterating based on real usage, you'll build a fitness tracking app that provides value from day 1 while leaving room for sophisticated AI features.
 
-**Current Status**: Phase 1 ~95% complete, Phase 2 ~90% complete. Multi-model AI, caching, scheduling, NL parsing, and observability are all wired in. Remaining work: production provisioning (Redis, Logfire token, deploy).
+**Current Status**: Phase 1 ~95% complete, Phase 2 ~90% complete, Phase 3 ~95% complete. Multi-model AI, caching, scheduling, NL parsing, observability, exercise library (800+ exercises), per-exercise set logging, training preferences, muscle recovery, strength scores, weekly targets, calendar view, dark theme, mobile optimization, workout timer with rest tracking, PR detection with celebrations, conversational AI coaching, and data export (JSON/CSV) are all implemented. 90 tests passing. Remaining work: production provisioning (Redis, Logfire token, deploy), video form guides, PWA/offline support.
 
 The key differentiator is the AI-powered long-term planning and adaptation - something marketplace apps can't offer with the latest models. Focus on making the AI coaching genuinely helpful, and the rest will follow.
 

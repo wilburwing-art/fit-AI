@@ -215,9 +215,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Test files (temporary/manual tests)
-test_*.html
-test_*.py
+# Test files (temporary/manual tests at repo root)
+/test_*.html
+/test_*.py
 *_test_temp.*
 
 # Fly.io

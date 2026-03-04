@@ -12,7 +12,15 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
-from src.api import ai_router, auth_router, data_router, pages_router
+from src.api import (
+    ai_router,
+    analytics_router,
+    auth_router,
+    data_router,
+    exercises_router,
+    export_router,
+    pages_router,
+)
 from src.config import settings
 from src.database import DatabaseSession, async_session_maker, create_db_and_tables
 from src.services.cache import close_redis, init_redis
@@ -142,7 +150,10 @@ async def generic_fit_agent_handler(request: Request, exc: FitAgentException):
 # Include routers
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(data_router, prefix="/api", tags=["data"])
+app.include_router(exercises_router, prefix="/api/exercises", tags=["exercises"])
+app.include_router(analytics_router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(ai_router, prefix="/api/ai", tags=["ai"])
+app.include_router(export_router, prefix="/api/export", tags=["export"])
 app.include_router(pages_router, tags=["pages"])
 
 

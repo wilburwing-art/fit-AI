@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0" x-data="coachChat()">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">AI Coach</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Ask questions about your training, nutrition, or recovery. The coach has access to your recent data.</p>
+
+        <!-- Messages -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg mb-4 overflow-hidden">
+            <div id="chat-messages" class="p-4 space-y-4 min-h-[300px] max-h-[500px] overflow-y-auto">
+                <template x-if="messages.length === 0">
+                    <div class="text-center text-gray-400 dark:text-gray-500 py-12">
+                        <p class="text-lg mb-2">No messages yet</p>
+                        <p class="text-sm">Try asking about your workout progress, nutrition, or recovery.</p>
+                    </div>
+                </template>
+                <template x-for="(msg, i) in messages" :key="i">
+                    <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                        <div :class="msg.role === 'user'
+                            ? 'bg-indigo-600 text-white rounded-lg rounded-br-none px-4 py-2 max-w-[80%]'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg rounded-bl-none px-4 py-2 max-w-[80%]'">
+                            <p class="text-sm whitespace-pre-wrap" x-text="msg.content"></p>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="loading">
+                    <div class="flex justify-start">
+                        <div class="bg-gray-100 dark:bg-gray-700 rounded-lg rounded-bl-none px-4 py-3">
+                            <div class="flex space-x-1">
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Input bar -->
+            <div class="border-t dark:border-gray-700 p-4">
+                <div class="flex gap-2">
+                    <input type="text" x-model="input" @keydown.enter="send()" :disabled="loading"
+                           placeholder="Ask your coach..."
+                           class="flex-1 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm border px-3 py-2">
+                    <button @click="send()" :disabled="loading || !input.trim()"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm touch-target">
+                        Send
+                    </button>
+                </div>
+                <p x-show="error" class="mt-2 text-sm text-red-600" x-text="error"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function coachChat() {
+    return {
+        messages: [],
+        input: '',
+        loading: false,
+        error: '',
+
+        async send() {
+            const question = this.input.trim();
+            if (!question || this.loading) return;
+
+            this.messages.push({ role: 'user', content: question });
+            this.input = '';
+            this.error = '';
+            this.loading = true;
+            this.$nextTick(() => this.scrollToBottom());
+
+            try {
+                const resp = await fetch('/api/ai/coach', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question }),
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    this.messages.push({ role: 'coach', content: data.answer });
+                } else if (resp.status === 429) {
+                    this.error = 'Rate limit reached. Please wait before asking again.';
+                } else {
+                    this.error = 'Failed to get response. Please try again.';
+                }
+            } catch (e) {
+                this.error = 'Network error. Please try again.';
+            }
+
+            this.loading = false;
+            this.$nextTick(() => this.scrollToBottom());
+        },
+
+        scrollToBottom() {
+            const el = document.getElementById('chat-messages');
+            if (el) el.scrollTop = el.scrollHeight;
+        },
+    };
+}
+</script>
+{% endblock %}

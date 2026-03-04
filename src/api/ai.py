@@ -1,17 +1,25 @@
 """AI-powered endpoints"""
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from sqlmodel import select
 
 from src.auth import current_active_user
+from src.database import DatabaseSession
 from src.exceptions import AIServiceError
-from src.models import User
+from src.models import MealLog, User, UserProfile, WeightLog, WorkoutSession
 from src.rate_limit import RATE_LIMITS, limiter
-from src.services.ai import generate_nutrition_targets, generate_workout_plan
+from src.schemas import CoachingRequest
+from src.services.ai import (
+    coaching_qa,
+    generate_nutrition_targets,
+    generate_workout_plan,
+)
 from src.services.nl_parser import parse_meal_text, parse_workout_text
 
 logger = logging.getLogger(__name__)
@@ -144,5 +152,107 @@ async def parse_meal(
         raise AIServiceError(
             message=f"Meal parsing failed: {e}",
             user_message="Failed to parse meal. Please try again.",
+            details={"user_id": str(user.id)},
+        )
+
+
+async def _gather_coaching_context(
+    session: DatabaseSession,
+    user: User,
+) -> str:
+    """Gather recent user data to provide context for coaching."""
+    now = datetime.now(UTC)
+    parts = []
+
+    # Profile preferences
+    profile_result = await session.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    if profile:
+        parts.append(
+            f"Profile: age={profile.age}, sex={profile.sex}, "
+            f"experience={profile.experience_level}, "
+            f"prefs={profile.preferences}"
+        )
+
+    # Last 14 days of workouts
+    workout_cutoff = (now - timedelta(days=14)).replace(tzinfo=None)
+    workout_result = await session.execute(
+        select(WorkoutSession)
+        .where(
+            WorkoutSession.user_id == user.id,
+            WorkoutSession.completed_date >= workout_cutoff,
+        )
+        .order_by(WorkoutSession.completed_date.desc())
+        .limit(20)
+    )
+    workouts = workout_result.scalars().all()
+    if workouts:
+        workout_lines = []
+        for w in workouts:
+            date = w.completed_date.strftime("%m/%d") if w.completed_date else "?"
+            workout_lines.append(
+                f"  {date}: {w.duration_minutes or '?'}min, RPE {w.overall_rpe or '?'}"
+            )
+        parts.append("Recent workouts (14d):\n" + "\n".join(workout_lines))
+
+    # Last 30 days of weight logs
+    weight_cutoff = (now - timedelta(days=30)).replace(tzinfo=None)
+    weight_result = await session.execute(
+        select(WeightLog)
+        .where(WeightLog.user_id == user.id, WeightLog.date >= weight_cutoff)
+        .order_by(WeightLog.date.desc())
+        .limit(10)
+    )
+    weights = weight_result.scalars().all()
+    if weights:
+        weight_lines = [
+            f"  {w.date.strftime('%m/%d')}: {w.weight_lbs}lbs"
+            for w in weights
+            if w.weight_lbs
+        ]
+        parts.append("Recent weight (30d):\n" + "\n".join(weight_lines))
+
+    # Last 7 days of meals
+    meal_cutoff = (now - timedelta(days=7)).replace(tzinfo=None)
+    meal_result = await session.execute(
+        select(MealLog)
+        .where(MealLog.user_id == user.id, MealLog.date >= meal_cutoff)
+        .order_by(MealLog.date.desc())
+        .limit(20)
+    )
+    meals = meal_result.scalars().all()
+    if meals:
+        meal_lines = [
+            f"  {m.date.strftime('%m/%d')} {m.meal_type or ''}: "
+            f"{m.calories or '?'}cal, P{m.protein_g or 0}g"
+            for m in meals
+        ]
+        parts.append("Recent meals (7d):\n" + "\n".join(meal_lines))
+
+    return "\n\n".join(parts) if parts else "No user data available yet."
+
+
+@router.post("/coach")
+@limiter.limit("20/hour")
+async def coach_qa(
+    request_data: CoachingRequest,
+    request: Request,
+    session: DatabaseSession,
+    user: User = Depends(current_active_user),
+):
+    """Answer a fitness coaching question using AI with user context."""
+    try:
+        context = await _gather_coaching_context(session, user)
+        answer = await coaching_qa(request_data.question, context)
+        return JSONResponse(content={"answer": str(answer)})
+    except AIServiceError:
+        raise
+    except Exception as e:
+        logger.exception(f"Coaching QA failed for user {user.id}")
+        raise AIServiceError(
+            message=f"Coaching QA failed: {e}",
+            user_message="Failed to get coaching response. Please try again later.",
             details={"user_id": str(user.id)},
         )

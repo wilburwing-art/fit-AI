@@ -6,6 +6,8 @@ from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from src.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -43,13 +45,13 @@ def get_ip_only(request: Request) -> str:
     return ip_address
 
 
-# Configure rate limiter with in-memory storage
-# When Redis is available, this can be swapped to RedisStorage
+# Use Redis for rate limiting when available, otherwise in-memory
+_storage_uri = settings.redis_url if settings.redis_enabled else "memory://"
 limiter = Limiter(
     key_func=get_user_identifier,
-    default_limits=["1000/hour"],  # Default fallback limit
-    headers_enabled=True,  # Include X-RateLimit-* headers in responses
-    storage_uri="memory://",  # In-memory storage (no Redis required)
+    default_limits=["1000/hour"],
+    headers_enabled=True,
+    storage_uri=_storage_uri,
 )
 
 
@@ -90,6 +92,7 @@ RATE_LIMITS = {
     # AI endpoints (user-based, very strict to prevent cost bombs)
     "ai_workout_plan": "5/day",
     "ai_nutrition_plan": "5/day",
+    "ai_nl_parse": "30/hour",
     # Data endpoints (user-based, generous for normal usage)
     "data_post": "100/hour",
     "data_get": "200/hour",

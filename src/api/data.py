@@ -1,7 +1,6 @@
 """Data logging API endpoints"""
 
 from datetime import UTC, datetime
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -18,6 +17,7 @@ from src.schemas import (
     WorkoutSessionCreate,
     WorkoutSessionRead,
 )
+from src.services.cache import cache_invalidate
 
 
 def time_ago(dt: datetime) -> str:
@@ -46,6 +46,7 @@ def time_ago(dt: datetime) -> str:
         # For older items, show the date
         return dt.strftime("%b %d, %Y")
 
+
 router = APIRouter()
 
 
@@ -68,13 +69,11 @@ async def log_weight(
         session.add(weight_log)
         await session.commit()
         await session.refresh(weight_log)
+        await cache_invalidate(f"analysis:{user.id}:*")
         return weight_log
     except Exception as e:
         await session.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to log weight: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to log weight: {str(e)}")
 
 
 @router.get("/weight")
@@ -95,14 +94,15 @@ async def get_weight_logs(
         weight_logs = result.scalars().all()
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch weight logs: {str(e)}"
+            status_code=500, detail=f"Failed to fetch weight logs: {str(e)}"
         )
 
     # Return HTML for HTMX requests
     if request.headers.get("HX-Request"):
         if not weight_logs:
-            return HTMLResponse("<p class='text-sm text-gray-500'>No weight logs yet. Start tracking your weight!</p>")
+            return HTMLResponse(
+                "<p class='text-sm text-gray-500'>No weight logs yet. Start tracking your weight!</p>"
+            )
 
         html = "<div class='space-y-3'>"
         for weight in weight_logs:
@@ -150,13 +150,11 @@ async def log_meal(
         session.add(meal_log)
         await session.commit()
         await session.refresh(meal_log)
+        await cache_invalidate(f"analysis:{user.id}:*")
         return meal_log
     except Exception as e:
         await session.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to log meal: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to log meal: {str(e)}")
 
 
 @router.get("/meals")
@@ -177,14 +175,15 @@ async def get_meal_logs(
         meal_logs = result.scalars().all()
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch meal logs: {str(e)}"
+            status_code=500, detail=f"Failed to fetch meal logs: {str(e)}"
         )
 
     # Return HTML for HTMX requests
     if request.headers.get("HX-Request"):
         if not meal_logs:
-            return HTMLResponse("<p class='text-sm text-gray-500'>No meals logged yet. Start tracking your nutrition!</p>")
+            return HTMLResponse(
+                "<p class='text-sm text-gray-500'>No meals logged yet. Start tracking your nutrition!</p>"
+            )
 
         html = "<div class='space-y-3'>"
         for meal in meal_logs:
@@ -235,13 +234,11 @@ async def log_workout(
         session.add(workout_session)
         await session.commit()
         await session.refresh(workout_session)
+        await cache_invalidate(f"analysis:{user.id}:*")
         return workout_session
     except Exception as e:
         await session.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to log workout: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to log workout: {str(e)}")
 
 
 @router.get("/workouts")
@@ -262,14 +259,15 @@ async def get_workout_sessions(
         workout_sessions = result.scalars().all()
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch workout sessions: {str(e)}"
+            status_code=500, detail=f"Failed to fetch workout sessions: {str(e)}"
         )
 
     # Return HTML for HTMX requests, JSON otherwise
     if request.headers.get("HX-Request"):
         if not workout_sessions:
-            return HTMLResponse("<p class='text-sm text-gray-500'>No workouts logged yet. Start tracking your workouts!</p>")
+            return HTMLResponse(
+                "<p class='text-sm text-gray-500'>No workouts logged yet. Start tracking your workouts!</p>"
+            )
 
         html = "<div class='space-y-4'>"
         for workout in workout_sessions:
@@ -329,36 +327,25 @@ async def get_recent_activity(
         weights = weight_result.scalars().all()
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch recent activity: {str(e)}"
+            status_code=500, detail=f"Failed to fetch recent activity: {str(e)}"
         )
 
     # Combine and sort by date
     activities = []
 
     for workout in workouts:
-        activities.append({
-            'type': 'workout',
-            'date': workout.completed_date,
-            'data': workout
-        })
+        activities.append(
+            {"type": "workout", "date": workout.completed_date, "data": workout}
+        )
 
     for meal in meals:
-        activities.append({
-            'type': 'meal',
-            'date': meal.date,
-            'data': meal
-        })
+        activities.append({"type": "meal", "date": meal.date, "data": meal})
 
     for weight in weights:
-        activities.append({
-            'type': 'weight',
-            'date': weight.date,
-            'data': weight
-        })
+        activities.append({"type": "weight", "date": weight.date, "data": weight})
 
     # Sort by date descending
-    activities.sort(key=lambda x: x['date'], reverse=True)
+    activities.sort(key=lambda x: x["date"], reverse=True)
     activities = activities[:10]  # Limit to 10 most recent
 
     if request.headers.get("HX-Request"):
@@ -373,26 +360,30 @@ async def get_recent_activity(
 
         html = "<ul class='divide-y divide-gray-200'>"
         for activity in activities:
-            date_str = time_ago(activity['date'])
+            date_str = time_ago(activity["date"])
 
-            if activity['type'] == 'workout':
-                workout = activity['data']
+            if activity["type"] == "workout":
+                workout = activity["data"]
                 icon = "🏋️"
                 title = "Workout"
-                details = f"{workout.duration_minutes} min" if workout.duration_minutes else "Completed"
+                details = (
+                    f"{workout.duration_minutes} min"
+                    if workout.duration_minutes
+                    else "Completed"
+                )
                 if workout.overall_rpe:
                     details += f" • RPE {workout.overall_rpe}/10"
 
-            elif activity['type'] == 'meal':
-                meal = activity['data']
+            elif activity["type"] == "meal":
+                meal = activity["data"]
                 icon = "🍽️"
                 title = f"{meal.meal_type.capitalize()}" if meal.meal_type else "Meal"
                 details = meal.description or "Logged"
                 if meal.calories:
                     details += f" • {meal.calories} cal"
 
-            elif activity['type'] == 'weight':
-                weight = activity['data']
+            elif activity["type"] == "weight":
+                weight = activity["data"]
                 icon = "⚖️"
                 title = "Weight"
                 details = f"{weight.weight_lbs} lbs" if weight.weight_lbs else "Logged"

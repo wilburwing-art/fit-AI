@@ -1,10 +1,10 @@
 # Implementation Status
 
-**Last Updated: 2025-11-16**
+**Last Updated: 2026-03-02**
 
-## Phase 1: Foundation (MVP) - ⚠️ 70% COMPLETE
+## Phase 1: Foundation (MVP) - ~95% COMPLETE
 
-Core infrastructure is built, but critical bugs block MVP completion.
+Core infrastructure is built and functional. Auth bug fixed, test suite passing, deployment configs exist.
 
 ### What's Been Built
 
@@ -14,84 +14,97 @@ Core infrastructure is built, but critical bugs block MVP completion.
 - Proper configuration management with Pydantic Settings
 - Environment variable support (`.env.example` provided)
 
-#### 2. Database Layer ⚠️
+#### 2. Database Layer ✅
 - PostgreSQL with async SQLAlchemy and SQLModel ✅
-- Type-safe ORM models for all entities: ✅
-  - User & UserProfile
-  - Goals
+- Type-safe ORM models for all entities ✅
+  - User & UserProfile, Goals
   - Workout Plans, Sessions, Exercises, Exercise Logs
   - Weight Logs, Meal Logs, Nutrition Targets
   - Analysis Cache, Scheduled Jobs
-- Alembic migrations configured for schema versioning ❌ **CRITICAL - NOT SET UP**
+- Alembic migrations configured with initial migration ✅
 - Database connection pooling with async support ✅
-- **Current**: Using auto-create in dev mode (`SQLModel.metadata.create_all()`), won't work in production
+- SQLite fallback for development and testing ✅
 
-#### 3. Authentication ⚠️
-- FastAPI-Users integration for secure auth ✅
-- JWT token-based authentication ✅
+#### 3. Authentication ✅
+- FastAPI-Users integration with dual auth backends ✅
+  - JWT bearer tokens for API calls ✅
+  - Cookie-based auth for HTML pages ✅
 - User registration and login endpoints ✅
-- Password hashing with bcrypt ✅
+- Password hashing (argon2/bcrypt) ✅
 - Protected route decorators (`current_active_user`) ✅
-- **BLOCKER**: HTMX requests don't pass JWT token → 401 errors on all data logging ❌
-  - JavaScript error in `base.html:12-18`: `TypeError: Cannot read properties of null`
-  - Forms submit but receive "Unauthorized" response
+- Server-side auth checks on all protected pages ✅
 
 #### 4. API Endpoints ✅
 
 **Authentication** (`/auth/*`):
 - `POST /auth/register` - Create new account
-- `POST /auth/jwt/login` - Login with credentials
-- `POST /auth/jwt/logout` - Logout
+- `POST /auth/jwt/login` - Login (returns JWT)
+- `POST /auth/cookie/login` - Login (sets cookie)
+- `POST /auth/cookie/logout` - Logout (clears cookie)
 - `GET /auth/users/me` - Get current user profile
 
 **Data Logging** (`/api/*`):
 - `POST /api/weight` - Log body weight and measurements
-- `GET /api/weight` - Retrieve weight history
+- `GET /api/weight` - Retrieve weight history (JSON or HTMX HTML)
 - `POST /api/meals` - Log meals with macros
 - `GET /api/meals` - Retrieve meal history
 - `POST /api/workouts` - Log workout sessions
 - `GET /api/workouts` - Retrieve workout history
+- `GET /api/recent-activity` - Combined activity feed
 
 **AI Features** (`/api/ai/*`):
 - `POST /api/ai/generate-workout-plan` - Generate personalized workout program
 - `POST /api/ai/generate-nutrition-plan` - Generate macro targets and meal suggestions
 
-#### 5. AI Integration ⚠️
-- PydanticAI agents configured with Claude Sonnet 4.5 ✅
-- Structured output validation with Pydantic ✅
-- Planning Agent for workout program generation ✅ (untested)
-- Nutrition Agent for meal planning ✅ (untested)
-- Analysis Agent framework ✅ (ready for Phase 2 expansion)
-- Cost-optimized model selection strategy ❌ (only Sonnet 4.5, no Opus/Haiku/GPT-5/Gemini)
-- **Status**: Code exists but never tested end-to-end with real API calls
+#### 5. AI Integration ✅
+- PydanticAI agents with multi-model strategy ✅
+  - Planning Agent: Claude Opus 4.1 (configurable)
+  - Nutrition Agent: Claude Sonnet 4.5 (configurable)
+  - Analysis Agent: Claude Sonnet 4.5 (configurable)
+  - Long-context Agent: Gemini 2.5 Pro (configurable)
+  - NL extraction: GPT-4o-mini (configurable)
+- Structured output validation (WorkoutPlanOutput, MealPlanOutput) ✅
+- Rate limiting on AI endpoints (5/day plan, 30/hr NL parse) ✅
+- slowapi integration with proper JSONResponse returns ✅
+- Test suite with mocked agents (no API credits burned) ✅
 
-#### 6. Frontend ⚠️
+#### 6. Frontend ✅
 - Server-rendered HTML with Jinja2 templates ✅
-- HTMX for dynamic, SPA-like interactions ⚠️ (broken auth integration)
-- Alpine.js for lightweight client-side interactivity ✅
-- Tailwind CSS for modern, responsive styling ⚠️ (using CDN, not production-ready)
+- HTMX for dynamic updates (weight/meal/workout logging) ✅
+- Alpine.js for client-side interactivity ✅
+- Tailwind CSS styling ⚠️ (using CDN, not production-ready)
 - Mobile-first design approach ✅
+- Cookie-based auth (no more localStorage bug) ✅
 
 **Pages**:
 - Landing page with feature highlights ✅
 - Login page ✅
 - Registration page ✅
 - Dashboard with quick logging forms ✅
-- Workouts page ✅ (newly added)
-- Nutrition page ✅ (newly added)
+- Workouts page with history ✅
+- Nutrition page with history ✅
 
-**Issues**:
-- Data logging forms don't work (401 errors from HTMX auth bug)
-- No success/error feedback messages displayed
-- History sections show placeholders, don't fetch real data
-- Using Tailwind CDN (console warning about production use)
+#### 7. Deployment Configuration ✅
+- Dockerfile for containerization ✅
+- fly.toml for Fly.io deployment ✅
+- docker-compose.yml for local development ✅
 
-#### 7. Deployment Configuration ❌
-- Dockerfile for containerization ❌ (not created)
-- fly.toml for Fly.io deployment ❌ (not created)
-- Auto-scaling configuration ❌
-- Production-ready environment setup ❌
-- **Status**: Not yet configured for deployment
+#### 8. Testing ✅
+- pytest with async support (pytest-asyncio) ✅
+- 28 tests passing across 5 test files ✅
+  - `test_auth.py` - 7 tests (register, login, protected routes, current user)
+  - `test_data.py` - 8 tests (weight/meal/workout CRUD, data isolation)
+  - `test_ai.py` - 4 tests (mocked plan generation, validation, auth)
+  - `test_cache.py` - 5 tests (Redis graceful degradation, hit/miss, invalidation)
+  - `test_nl_parser.py` - 4 tests (workout/meal parsing, auth, validation)
+- Mocked AI agents (no API credits burned in CI) ✅
+- In-memory SQLite for fast, isolated test runs ✅
+
+#### 9. Code Quality ✅
+- Ruff linting and formatting configured ✅
+- Custom exception hierarchy (ValidationError, AIServiceError, etc.) ✅
+- Rate limiting with slowapi ✅
+- Input validation with Pydantic schemas ✅
 
 ### File Structure
 
@@ -109,102 +122,51 @@ fit-agent/
 │   │   ├── nutrition.py   # Nutrition models
 │   │   └── ai.py          # AI cache models
 │   ├── services/
-│   │   └── ai.py          # PydanticAI agents
+│   │   ├── ai.py          # PydanticAI agents (multi-model)
+│   │   ├── cache.py       # Redis caching (graceful degradation)
+│   │   ├── nl_parser.py   # Natural language parsing
+│   │   └── scheduler.py   # APScheduler background jobs
 │   ├── templates/         # Jinja2 HTML templates
 │   ├── static/            # CSS, JS, images
 │   ├── auth.py            # FastAPI-Users setup
 │   ├── config.py          # Settings management
 │   ├── database.py        # DB connection
 │   ├── schemas.py         # Pydantic schemas
+│   ├── exceptions.py      # Custom exceptions
+│   ├── rate_limit.py      # Rate limiting config
 │   └── main.py            # FastAPI app
-├── alembic/               # Database migrations (NOT SET UP YET)
-├── tests/                 # Tests (NOT CREATED YET)
+├── alembic/               # Database migrations
+├── tests/
+│   ├── conftest.py        # Shared fixtures
+│   ├── test_auth.py       # Auth tests (7)
+│   ├── test_data.py       # Data logging tests (8)
+│   ├── test_ai.py         # AI endpoint tests (4)
+│   ├── test_cache.py      # Cache service tests (5)
+│   └── test_nl_parser.py  # NL parser tests (4)
 ├── Dockerfile             # Container definition
-├── fly.toml               # Deployment config
+├── fly.toml               # Fly.io deployment config
+├── docker-compose.yml     # Local dev environment
 ├── pyproject.toml         # Dependencies
 └── README.md              # Documentation
 ```
 
 ---
 
-## 🚨 Critical Issues Blocking MVP
+## Remaining Items
 
-### 1. **HTMX Authorization Header Bug** (BLOCKER)
-- **Location**: `src/templates/base.html:12-18`
-- **Symptom**: JavaScript error prevents JWT token from being added to HTMX requests
-- **Impact**: All data logging endpoints return 401 Unauthorized
-- **Fix Required**: Debug and fix JavaScript event listener setup
+### To Complete Phase 1 (~5% remaining)
 
-### 2. **No Database Migrations** (CRITICAL)
-- **Current**: Using `SQLModel.metadata.create_all()` auto-creation in dev mode
-- **Impact**: Cannot deploy to production, no schema versioning
-- **Fix Required**:
-  ```bash
-  uv run alembic init migrations
-  uv run alembic revision --autogenerate -m "initial schema"
-  ```
+1. **Compile Tailwind CSS** (LOW)
+   - Currently using CDN script tag (works but not production-optimized)
+   - Replace with compiled CSS for production builds
 
-### 3. **AI Integration Untested** (HIGH PRIORITY)
-- **Status**: Endpoints exist, agents defined, but never called end-to-end
-- **Risk**: May fail in production with real API keys
-- **Fix Required**: Manual test or add pytest with mocked responses
+2. **Deploy to Fly.io** (MEDIUM)
+   - Configs exist (Dockerfile, fly.toml)
+   - Need to provision database, set secrets, and deploy
+   - Test end-to-end in production
 
-### 4. **No Test Suite** (HIGH PRIORITY)
-- **Status**: Zero tests written
-- **Impact**: No confidence in deployability, would burn AI credits in CI
-- **Fix Required**: Add pytest with TestClient and mock AI responses
-
-### 5. **No Deployment Configuration** (MEDIUM PRIORITY)
-- **Status**: No Dockerfile or fly.toml exists
-- **Impact**: Cannot deploy to Fly.io
-- **Fix Required**: Create deployment configs
-
----
-
-## Next Steps to Complete Phase 1
-
-### Week 1: Fix Blockers (8-10 hours)
-
-1. **Debug HTMX Auth Bug** (2-3 hours)
-   - Fix JavaScript in `base.html`
-   - Test weight/meal/workout logging
-   - Verify 200 responses and data persists
-
-2. **Set Up Alembic** (1-2 hours)
-   - Initialize migrations directory
-   - Create initial migration
-   - Test upgrade/downgrade
-
-3. **Test AI Endpoints** (1-2 hours)
-   - Call `/api/ai/generate-workout-plan` manually
-   - Verify structured output works
-   - Document API usage
-
-4. **Add Basic Error Handling** (2-3 hours)
-   - Wrap routes in try/except
-   - Return user-friendly messages
-   - Show success/error in UI
-
-### Week 2: Polish MVP (8-11 hours)
-
-5. **Fetch and Display Real Data** (3-4 hours)
-   - Load recent activity on dashboard
-   - Show workout/meal history on respective pages
-   - Replace placeholder text
-
-6. **Add Pytest Suite** (2-3 hours)
-   - Test auth flow
-   - Mock AI responses
-   - Test data logging endpoints
-
-7. **Compile Tailwind CSS** (1 hour)
-   - Remove CDN script
-   - Build production CSS
-
-8. **Deploy to Fly.io** (2-3 hours)
-   - Create configs
-   - Provision database
-   - Deploy and test
+3. **End-to-end AI test with real API key** (LOW)
+   - Automated tests use mocks; manual verification with real API key recommended before production
 
 ---
 
@@ -212,17 +174,15 @@ fit-agent/
 
 ### 1. Start Database
 
-Before running the application, start PostgreSQL:
-
 ```bash
-# Using Docker (recommended):
+# Using Docker:
 docker run -d -p 5432:5432 \
   -e POSTGRES_PASSWORD=dev \
   -e POSTGRES_DB=fitgent \
   --name fitgent-db \
   postgres:16
 
-# Or use a local PostgreSQL installation
+# Or use SQLite (default in dev mode, no setup needed)
 ```
 
 ### 2. Configure Environment
@@ -230,21 +190,16 @@ docker run -d -p 5432:5432 \
 ```bash
 cp .env.example .env
 # Edit .env and set:
-# - DATABASE_URL (if different from default)
+# - DATABASE_URL (if using PostgreSQL)
 # - ANTHROPIC_API_KEY (required for AI features)
 # - SECRET_KEY (generate with: openssl rand -hex 32)
 ```
 
 ### 3. Run Migrations
 
-⚠️ **NOTE**: Alembic not yet set up. Currently using auto-create in dev mode.
-
 ```bash
-# TODO: Set up Alembic first
-# uv run alembic upgrade head
+uv run alembic upgrade head
 ```
-
-Tables are currently auto-created on app startup in development mode.
 
 ### 4. Start the Application
 
@@ -252,55 +207,120 @@ Tables are currently auto-created on app startup in development mode.
 uv run uvicorn src.main:app --reload
 ```
 
-Then open http://localhost:8000 in your browser.
+Open http://localhost:8000
 
-### 5. Test Core Features
-
-1. **Register an account** at `/register` ✅ Working
-2. **Login** at `/login` ✅ Working
-3. **Visit dashboard** at `/dashboard` ✅ Working
-4. **Log some data** ❌ **BROKEN - 401 errors**:
-   - Weight (blocked by HTMX auth bug)
-   - Meals (blocked by HTMX auth bug)
-   - Workouts (blocked by HTMX auth bug)
-5. **Try AI features** ⚠️ Untested (requires ANTHROPIC_API_KEY):
-   - Generate a workout plan via `/api/ai/generate-workout-plan`
-
-### 6. Deploy to Fly.io
-
-⚠️ **NOT READY**: Fix critical bugs and set up migrations first.
+### 5. Run Tests
 
 ```bash
-# TODO: Create Dockerfile and fly.toml first
-# Then run:
-# fly launch
-# fly secrets set ANTHROPIC_API_KEY=sk-ant-...
-# fly secrets set SECRET_KEY=$(openssl rand -hex 32)
-# fly deploy
+uv run pytest -v
 ```
 
-## What's Next: Phase 2
+### 6. Test Core Features
 
-Phase 2 will add:
-- Multi-model AI strategy (Claude Opus, GPT-5-mini, Gemini)
-- Background job scheduling (APScheduler)
-- Redis caching layer
-- Natural language logging ("Bench 225x5x3 @RPE8")
-- Weekly automated analysis
-- Pydantic Logfire observability and cost tracking
+1. **Register an account** at `/register` ✅
+2. **Login** at `/login` ✅
+3. **Visit dashboard** at `/dashboard` ✅
+4. **Log data** ✅
+   - Weight logging ✅
+   - Meal logging ✅
+   - Workout logging ✅
+5. **AI features** (requires ANTHROPIC_API_KEY):
+   - `POST /api/ai/generate-workout-plan`
+   - `POST /api/ai/generate-nutrition-plan`
 
-## Technical Highlights
+### 7. Deploy to Fly.io
 
-- **Type Safety**: Full type hints throughout with mypy compatibility
-- **Async First**: All I/O operations are async for better performance
-- **Structured Outputs**: PydanticAI ensures reliable AI responses
-- **Security**: JWT auth, password hashing, SQL injection protection
-- **Scalability**: Async database, connection pooling, ready for horizontal scaling
-- **Developer Experience**: Hot reload, clear error messages, comprehensive docs
+```bash
+fly launch
+fly secrets set ANTHROPIC_API_KEY=sk-ant-... SECRET_KEY=$(openssl rand -hex 32)
+fly deploy
+```
+
+## Phase 2: AI Agents, Caching, Scheduling - ~90% COMPLETE
+
+### What's Been Built
+
+#### 1. Logfire Observability ✅
+- Conditional instrumentation (no-op without LOGFIRE_TOKEN)
+- `logfire.instrument_fastapi()` and `logfire.instrument_pydantic_ai()` in lifespan
+- `@logfire.instrument()` on all AI and cache service functions
+
+#### 2. Redis Caching ✅
+- `src/services/cache.py` with graceful degradation
+- `cache_get`, `cache_set`, `cache_invalidate` — all safe when Redis is down
+- Rate limiter backed by Redis when REDIS_ENABLED=true
+- Cache invalidation on data writes (weight, meal, workout)
+
+#### 3. Multi-model AI Strategy ✅
+- Configurable model names via env vars (PLANNING_MODEL, ANALYSIS_MODEL, etc.)
+- Defaults: Opus (planning), Sonnet (analysis/coaching), Haiku (validation), GPT-4o-mini (extraction), Gemini 2.5 Pro (long-context)
+- Cache integration in `generate_workout_plan` and `generate_nutrition_targets`
+- Lazy-loaded agents with proper globals
+
+#### 4. Natural Language Parsing ✅
+- `src/services/nl_parser.py` with `ParsedWorkout` and `ParsedMeal` models
+- `POST /api/ai/parse-workout` and `POST /api/ai/parse-meal` endpoints
+- Rate limited at 30/hour
+- Uses extraction model (GPT-4o-mini by default)
+
+#### 5. Background Scheduling ✅
+- APScheduler 3.x `AsyncIOScheduler` in FastAPI lifespan
+- Weekly analysis job (Monday 6 AM UTC)
+- Per-user analysis with DB persistence + Redis caching
+- Skipped in test environment
+
+### Remaining Phase 2 Items
+1. Provision Redis in production (set REDIS_ENABLED=true)
+2. Configure Logfire token in production
+3. Set OpenAI/Google API keys for extraction and long-context agents
+
+## What's Next: Phase 3
+
+Phase 3 will add:
+- Chart.js visualizations (weight trends, macro adherence)
+- Exercise library browser
+- Conversational Q&A coaching
+- Mobile optimization (touch forms, responsive tables)
+- Workout timer and PR tracking
+
+## Success Criteria
+
+### Phase 1 ~95% Complete
+- [x] FastAPI application running with async support
+- [x] PostgreSQL database with full schema
+- [x] User authentication (register, login, JWT + cookies)
+- [x] Data logging (weight, meals, workouts)
+- [x] AI workout plan generation (tested with mocks)
+- [x] AI nutrition plan generation (tested with mocks)
+- [x] Clean, responsive UI (HTMX + Tailwind)
+- [x] Deployment configuration (Docker, fly.toml)
+- [x] Database migrations (Alembic)
+- [x] Type-safe models (SQLModel + Pydantic)
+- [x] Test suite passing
+- [ ] Compile Tailwind CSS (using CDN)
+- [ ] Live deployment to Fly.io
+
+### Phase 2 ~90% Complete
+- [x] Multi-model AI strategy (configurable via env vars)
+- [x] Redis caching with graceful degradation
+- [x] Background scheduling (APScheduler 3.x)
+- [x] Natural language workout/meal parsing
+- [x] Logfire observability instrumentation
+- [x] Cache invalidation on data writes
+- [x] 28 tests passing (9 new tests added)
+- [ ] Redis provisioned in production
+- [ ] Logfire token configured in production
+
+## Known Issues
+
+1. **Tailwind CDN**: Using CDN script tag instead of compiled CSS. Works but shows console warning.
+2. **Database connection errors**: Make sure PostgreSQL is running and DATABASE_URL is correct (or use default SQLite).
+3. **AI features require API key**: Set ANTHROPIC_API_KEY in `.env` for AI endpoints.
+4. **Port already in use**: Change the port in `src/main.py` or kill the process using port 8000.
 
 ## Cost Estimate
 
-With Phase 1 complete, running costs for 2-3 users:
+Running costs for 2-3 users:
 
 - **Hosting**: $0/month (Fly.io free tier)
 - **Database**: $0/month (included in Fly.io free tier)
@@ -310,31 +330,4 @@ With Phase 1 complete, running costs for 2-3 users:
 
 Phase 2 will add more AI models but remain under $20/month with proper caching.
 
-## Success Criteria - Phase 1 ⚠️ 70% Complete
-
-- [x] FastAPI application running with async support
-- [x] PostgreSQL database with full schema
-- [x] User authentication (register, login, JWT)
-- [ ] Data logging (weight, meals, workouts) ❌ **BLOCKED by HTMX auth bug**
-- [ ] AI workout plan generation ⚠️ **Untested**
-- [ ] AI nutrition plan generation ⚠️ **Untested**
-- [x] Clean, responsive UI (HTMX + Tailwind) ⚠️ **Using CDN, not production-ready**
-- [ ] Deployment configuration (Docker, Fly.io) ❌ **Not created**
-- [ ] Database migrations (Alembic) ❌ **CRITICAL - Not set up**
-- [x] Type-safe models (SQLModel + Pydantic)
-
-**Phase 1 is 70% complete.** Core infrastructure exists but critical bugs block MVP completion.
-
-## Known Issues
-
-1. **Data logging returns 401 Unauthorized**: HTMX auth bug in `base.html` - fix in progress
-2. **Database connection errors**: Make sure PostgreSQL is running and DATABASE_URL is correct
-3. **AI features not working**: Check that ANTHROPIC_API_KEY is set in your environment
-4. **No migrations directory**: Run `uv run alembic init migrations` to set up
-5. **Port already in use**: Change the port in `src/main.py` or kill the process using port 8000
-
-## Estimated Time to MVP Completion
-
-**15-20 hours** of focused work to fix critical bugs and complete Phase 1.
-
-See detailed plan in `fit_agent_plan.md` for current status and next steps.
+See detailed plan in `fit_agent_plan.md` for architecture and roadmap.

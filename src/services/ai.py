@@ -1,18 +1,27 @@
 """AI services using PydanticAI"""
 
+import hashlib
 import os
 
+import logfire
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from src.config import settings
+from src.services.cache import cache_get, cache_set
 
-# Set ANTHROPIC_API_KEY environment variable from settings
-# PydanticAI reads from environment variables
+# Set provider API keys from settings — PydanticAI reads from env vars
 if settings.anthropic_api_key:
-    os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+    os.environ.setdefault("ANTHROPIC_API_KEY", settings.anthropic_api_key)
+if settings.openai_api_key:
+    os.environ.setdefault("OPENAI_API_KEY", settings.openai_api_key)
+if settings.google_api_key:
+    os.environ.setdefault("GOOGLE_API_KEY", settings.google_api_key)
 
+
+# ---------------------------------------------------------------------------
 # Structured output models
+# ---------------------------------------------------------------------------
 class WorkoutPlanOutput(BaseModel):
     """Structured workout plan output"""
 
@@ -34,17 +43,21 @@ class MealPlanOutput(BaseModel):
     rationale: str
 
 
-# Lazy-loaded agents (initialized on first use)
+# ---------------------------------------------------------------------------
+# Lazy-loaded agents (initialised on first use)
+# ---------------------------------------------------------------------------
 _planning_agent: Agent | None = None
 _nutrition_agent: Agent | None = None
+_analysis_agent: Agent | None = None
+_long_context_agent: Agent | None = None
 
 
 def get_planning_agent() -> Agent:
-    """Get or create the planning agent"""
+    """Get or create the planning agent (uses planning_model — Opus by default)."""
     global _planning_agent
     if _planning_agent is None:
         _planning_agent = Agent(
-            "anthropic:claude-sonnet-4-5-20250929",
+            settings.planning_model,
             result_type=WorkoutPlanOutput,
             system_prompt="""You are an expert strength coach and personal trainer.
 
@@ -65,11 +78,11 @@ def get_planning_agent() -> Agent:
 
 
 def get_nutrition_agent() -> Agent:
-    """Get or create the nutrition agent"""
+    """Get or create the nutrition agent (uses coaching_model — Sonnet by default)."""
     global _nutrition_agent
     if _nutrition_agent is None:
         _nutrition_agent = Agent(
-            "anthropic:claude-sonnet-4-5-20250929",
+            settings.coaching_model,
             result_type=MealPlanOutput,
             system_prompt="""You are an expert sports nutritionist and dietitian.
 
@@ -89,6 +102,52 @@ def get_nutrition_agent() -> Agent:
     return _nutrition_agent
 
 
+def get_analysis_agent() -> Agent:
+    """Get or create the analysis agent (uses analysis_model — Sonnet by default)."""
+    global _analysis_agent
+    if _analysis_agent is None:
+        _analysis_agent = Agent(
+            settings.analysis_model,
+            system_prompt="""You are an AI fitness coach analyzing user progress.
+
+        Review the provided data and identify:
+        - Progress trends (improving, plateauing, declining)
+        - Potential issues or concerns
+        - Correlation between training, nutrition, and results
+        - Specific, actionable recommendations
+
+        Be supportive but honest. Celebrate wins and provide constructive feedback.""",
+        )
+    return _analysis_agent
+
+
+def get_long_context_agent() -> Agent:
+    """Get or create the long-context agent (uses long_context_model — Gemini by default)."""
+    global _long_context_agent
+    if _long_context_agent is None:
+        _long_context_agent = Agent(
+            settings.long_context_model,
+            system_prompt="""You are a fitness data analyst with access to a user's
+        complete training history. Provide deep, longitudinal insights that span
+        months or years of data. Identify long-term trends, periodisation
+        effectiveness, and macro-level recommendations.""",
+        )
+    return _long_context_agent
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _hash_params(*args: object) -> str:
+    """SHA-256 hash of arguments, truncated to 16 hex chars."""
+    raw = "|".join(str(a) for a in args)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+# ---------------------------------------------------------------------------
+# Service functions
+# ---------------------------------------------------------------------------
+@logfire.instrument("ai:generate_workout_plan")
 async def generate_workout_plan(
     user_goals: str,
     experience_level: str,
@@ -97,19 +156,13 @@ async def generate_workout_plan(
     injuries: str | None = None,
     age: int | None = None,
 ) -> WorkoutPlanOutput:
-    """Generate a personalized workout plan using AI
+    """Generate a personalized workout plan using AI"""
+    # Check cache
+    cache_key = f"plan:{_hash_params(user_goals, experience_level, sorted(equipment_access), time_availability, injuries, age)}"
+    cached = await cache_get(cache_key)
+    if cached:
+        return WorkoutPlanOutput(**cached)
 
-    Args:
-        user_goals: User's fitness goals (e.g., "build muscle", "lose weight")
-        experience_level: "beginner", "intermediate", or "advanced"
-        equipment_access: List of available equipment
-        time_availability: Minutes available per week
-        injuries: Any injuries or limitations
-        age: User's age
-
-    Returns:
-        Structured workout plan with exercises and rationale
-    """
     prompt = f"""Create a personalized workout program for this user:
 
 Goals: {user_goals}
@@ -128,26 +181,24 @@ Generate a complete workout plan with:
 
     agent = get_planning_agent()
     result = await agent.run(prompt)
+    await cache_set(cache_key, result.data.model_dump())
     return result.data
 
 
+@logfire.instrument("ai:generate_nutrition_targets")
 async def generate_nutrition_targets(
     user_goals: str,
     weight_lbs: float,
     activity_level: str,
     dietary_preferences: str | None = None,
 ) -> MealPlanOutput:
-    """Generate personalized nutrition targets using AI
+    """Generate personalized nutrition targets using AI"""
+    # Check cache
+    cache_key = f"nutrition:{_hash_params(user_goals, weight_lbs, activity_level, dietary_preferences)}"
+    cached = await cache_get(cache_key)
+    if cached:
+        return MealPlanOutput(**cached)
 
-    Args:
-        user_goals: User's fitness goals
-        weight_lbs: Current weight in pounds
-        activity_level: "sedentary", "moderate", or "active"
-        dietary_preferences: Any dietary restrictions or preferences
-
-    Returns:
-        Structured nutrition plan with macro targets and meal suggestions
-    """
     prompt = f"""Create personalized nutrition targets for this user:
 
 Goals: {user_goals}
@@ -164,36 +215,18 @@ Generate nutrition recommendations with:
 
     agent = get_nutrition_agent()
     result = await agent.run(prompt)
+    await cache_set(cache_key, result.data.model_dump())
     return result.data
 
 
+@logfire.instrument("ai:analyze_progress")
 async def analyze_progress(
     workout_history: list[dict],
     weight_history: list[dict],
     meal_history: list[dict],
 ) -> str:
-    """Analyze user progress and provide insights
-
-    Args:
-        workout_history: Recent workout data
-        weight_history: Recent weight measurements
-        meal_history: Recent meal logs
-
-    Returns:
-        Analysis summary with insights and recommendations
-    """
-    analysis_agent = Agent(
-        "anthropic:claude-sonnet-4-5-20250929",
-        system_prompt="""You are an AI fitness coach analyzing user progress.
-
-        Review the provided data and identify:
-        - Progress trends (improving, plateauing, declining)
-        - Potential issues or concerns
-        - Correlation between training, nutrition, and results
-        - Specific, actionable recommendations
-
-        Be supportive but honest. Celebrate wins and provide constructive feedback.""",
-    )
+    """Analyze user progress and provide insights"""
+    agent = get_analysis_agent()
 
     prompt = f"""Analyze this user's recent fitness data:
 
@@ -212,5 +245,5 @@ Provide a concise analysis with:
 3. Specific recommendations for improvement
 """
 
-    result = await analysis_agent.run(prompt)
+    result = await agent.run(prompt)
     return result.data

@@ -5,7 +5,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi_users import schemas
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # User schemas (FastAPI-Users)
@@ -81,7 +81,7 @@ class WeightLogCreate(BaseModel):
         """Strip timezone info to match database expectations"""
         if isinstance(v, str):
             # Parse ISO string and strip timezone
-            dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
             return dt.replace(tzinfo=None)
         if isinstance(v, datetime) and v.tzinfo is not None:
             return v.replace(tzinfo=None)
@@ -90,6 +90,8 @@ class WeightLogCreate(BaseModel):
 
 class WeightLogRead(BaseModel):
     """Schema for reading weight log"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     user_id: UUID
@@ -118,7 +120,7 @@ class MealLogCreate(BaseModel):
         """Strip timezone info to match database expectations"""
         if isinstance(v, str):
             # Parse ISO string and strip timezone
-            dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
             return dt.replace(tzinfo=None)
         if isinstance(v, datetime) and v.tzinfo is not None:
             return v.replace(tzinfo=None)
@@ -127,6 +129,8 @@ class MealLogCreate(BaseModel):
 
 class MealLogRead(BaseModel):
     """Schema for reading meal log"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     user_id: UUID
@@ -156,7 +160,7 @@ class WorkoutSessionCreate(BaseModel):
         """Strip timezone info to match database expectations"""
         if isinstance(v, str):
             # Parse ISO string and strip timezone
-            dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
             return dt.replace(tzinfo=None)
         if isinstance(v, datetime) and v.tzinfo is not None:
             return v.replace(tzinfo=None)
@@ -165,6 +169,8 @@ class WorkoutSessionCreate(BaseModel):
 
 class WorkoutSessionRead(BaseModel):
     """Schema for reading workout session"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     user_id: UUID

@@ -3,6 +3,7 @@
 import logging
 from contextlib import asynccontextmanager
 
+import logfire
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +14,9 @@ from sqlalchemy import text
 
 from src.api import ai_router, auth_router, data_router, pages_router
 from src.config import settings
-from src.database import DatabaseSession, create_db_and_tables
+from src.database import DatabaseSession, async_session_maker, create_db_and_tables
+from src.services.cache import close_redis, init_redis
+from src.services.scheduler import setup_scheduler
 from src.exceptions import (
     AIServiceError,
     AuthenticationError,
@@ -33,11 +36,32 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
+    # Observability
+    if settings.logfire_token:
+        logfire.configure(token=settings.logfire_token)
+        logfire.instrument_fastapi(app)
+        logfire.instrument_pydantic_ai()
+
+    # Redis
+    redis_client = await init_redis()
+    app.state.redis = redis_client
+
     # Startup: Create database tables (development only)
     if settings.debug:
         await create_db_and_tables()
+
+    # Background scheduler (skip in test environment)
+    scheduler = None
+    if settings.environment != "test":
+        scheduler = setup_scheduler(async_session_maker)
+        scheduler.start()
+
     yield
-    # Shutdown: Cleanup if needed
+
+    # Shutdown
+    if scheduler is not None:
+        scheduler.shutdown()
+    await close_redis()
 
 
 app = FastAPI(

@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -86,7 +86,7 @@ async def test_client(test_db: AsyncSession) -> AsyncGenerator[AsyncClient, None
     app.dependency_overrides[get_async_session] = override_get_db
 
     async with AsyncClient(
-        transport=ASGITransport(app=app),
+        transport=ASGITransport(app=app, client=("127.0.0.1", 12345)),
         base_url="http://test",
     ) as client:
         yield client
@@ -282,7 +282,7 @@ def mock_pydantic_ai_agent(mocker, mock_ai_response_workout):
 def sample_weight_log_data():
     """Sample weight log data for testing"""
     return {
-        "date": datetime.utcnow().isoformat(),
+        "date": datetime.now(UTC).isoformat(),
         "weight_lbs": 185.5,
         "body_fat_pct": 15.2,
         "measurements": {
@@ -297,7 +297,7 @@ def sample_weight_log_data():
 def sample_meal_log_data():
     """Sample meal log data for testing"""
     return {
-        "date": datetime.utcnow().isoformat(),
+        "date": datetime.now(UTC).isoformat(),
         "meal_type": "lunch",
         "description": "Grilled chicken with rice and vegetables",
         "protein_g": 45.0,
@@ -311,8 +311,8 @@ def sample_meal_log_data():
 def sample_workout_session_data():
     """Sample workout session data for testing"""
     return {
-        "scheduled_date": datetime.utcnow().isoformat(),
-        "completed_date": datetime.utcnow().isoformat(),
+        "scheduled_date": datetime.now(UTC).isoformat(),
+        "completed_date": datetime.now(UTC).isoformat(),
         "duration_minutes": 75,
         "overall_rpe": 8,
         "notes": "Great session, felt strong on squats",
